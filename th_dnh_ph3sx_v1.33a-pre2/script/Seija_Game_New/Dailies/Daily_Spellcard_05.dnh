@@ -1,0 +1,331 @@
+#TouhouDanmakufu[Single]
+#ScriptVersion[3]
+#Title["Daily_Spellcard_05"]
+//#Background["./Stage/BG/STG_00.dnh"];
+#Player[ "./../Player/PL_Reimu.dnh", "./../Player/PL_Marisa.dnh" ]
+#System["./../System/System_Main_Hud.dnh"]
+#Text["Date: 5/9/25, Time: 1 Hour[r]User: ???. Name: \"???\""]
+
+//--------------------------------------------------Variables------------------------------------------------------
+
+let bossObj;
+let objScene = GetEnemyBossSceneObjectID();
+let bossX = 0;
+let bossY = 0;
+
+//SetIntersectionVisualization( true );
+
+let BossTex = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Boss/Test_Boss.png";
+
+//---------------------------------------------------Include-------------------------------------------------------
+
+	#include "./../lib/Index_Boss.dnh"
+	#include "./../lib/Lib_Spell.dnh"
+	#include "./../lib/Lib_SpellCutin.dnh"	
+
+//----------------------------------------------------Start--------------------------------------------------------
+
+@Initialize {
+
+	bossObj = ObjEnemy_Create(OBJ_ENEMY_BOSS);	
+	
+	ObjEnemy_Regist( bossObj );	
+
+	T_Lifebar( bossObj );
+	T_HitEffect( bossObj );
+	ObjEnemy_SetDamageRate( bossObj, 0, 0 );	
+
+	//Init_Boss_Eternity( bossObj );
+
+	Render_WheelGhost_A1( bossObj, ENEMY_BLUE );
+
+	ObjRender_SetTextureFilter( bossObj, FILTER_NONE, FILTER_NONE, FILTER_NONE );
+	
+	ObjMove_SetDestAtWeight( bossObj, GetStgFrameWidth/2, Get_CenterY, 15, 8 );
+	
+	
+	//SetPlayerLife( 8 );
+	T_Main;
+	T_End;
+	
+}
+
+@Event { 
+
+	alternative(GetEventType()) 
+	case( EV_REQUEST_LIFE ) { 
+		SetScriptResult( 760 ); // 3000-4500 For Nons ( At 100% Damage Rate. )
+	}
+	case( EV_REQUEST_TIMER ) { 
+		SetScriptResult( 80 ); //40-50 For standard Nons.
+	}	
+	case( EV_REQUEST_SPELL_SCORE ){
+       SetScriptResult( 6500000 );
+    }	
+
+} 
+
+@MainLoop {
+
+	bossX = ObjMove_GetX( bossObj );
+	bossY = ObjMove_GetY( bossObj );
+	
+	SetCommonData( "Effect_X", bossX );
+	SetCommonData( "Effect_Y", bossY );	
+
+	ObjEnemy_SetIntersectionCircleToShot( bossObj, bossX, bossY, 16 );
+	ObjEnemy_SetIntersectionCircleToPlayer( bossObj, bossX, bossY, 8 );
+	
+	yield;
+}
+
+@Finalize {
+} 
+
+task T_InitSpell(){
+	
+	//let CutinTex = GetCurrentScriptDirectory() ~ "./Resource/Textures/Boss/Cutin/CurseOfRa.png";
+	
+	T_CallSpell_A1( "\"Hallowed Ground: Everlasting Roots\"", 0, "Normal", objScene );
+	//T_Call_Spell_Cutin( CutinTex, [ 0, 0, 450, 480 ], 0.8, CC_PINK );	
+	
+	ObjEnemyBossScene_StartSpell( objScene );
+	
+	yield;
+	T_SpellBG_Generic();
+	//T_SpellBG_Nina();
+	
+}	
+
+
+//----------------------------------------------------Patterns--------------------------------------------------------
+
+task T_Main {
+
+
+	NotifyEventAll( EV_BOSS_EFFECT, bossObj, CC_GREEN );
+	T_Shoot_Banner( "Hosaki Kifuen", CC_GREEN, 40 );
+
+	wait( 125 );
+
+	T_PlaySE( SE_CHARGE_00, 30 );
+	T_Charge_A1( bossObj, 20, "Petal", CC_GREEN );
+
+	wait( 80 );    
+
+	T_InitSpell();
+	
+	wait( 160 );  
+	
+	ObjEnemy_SetDamageRate( bossObj, 0.13, 0.13 );
+
+    float Offset_Y = 30;
+    int Color = 1;
+    int[] Color_Orb = [ SHOT_ORB_RED, SHOT_ORB_RED, SHOT_ORB_BLUE ];
+    int[] Color_Shot = [ SHOT_BALL_RED, SHOT_BALL_RED, SHOT_BALL_BLUE ];
+    bool Shot_Go = false;
+    int Dir = 90;
+
+	while( ObjEnemy_GetInfo( bossObj, INFO_LIFE ) > 0 ) {
+
+        float Angle_Base = GetAngleToPlayer( bossObj );
+		float Shot_Angle = 90;
+
+        ascent (i in 0..5) {
+            T_Create_SplitShot( bossX, bossY, Angle_Base + i * 360/5, 0, SHOT_LASER_RED, 15, Shot_Angle );
+
+			//Shot_Angle =-Shot_Angle;
+        }
+        wait( 600 );
+		yield;
+
+	}
+
+    task T_Create_SplitShot( X, Y, Init_Angle, Dir, Color_A, Split_Count, Shot_Angle ){
+
+        int Split_Counter = 0;
+	    float Length = 64;
+		float Angle_Split = 24;
+
+        int Laser_A = CreateStraightLaserA1( X, Y, Init_Angle, Length, 16, 30, SHOT_CURVY_LASER_GREEN, 120 );
+
+        T_Split( Laser_A );
+
+        task T_Split( Obj ){
+
+            T_LaserReady( Obj, Length, 10 );
+            T_LaserDespawn( Obj, 16, 30, 120 );
+
+            wait( 10 );
+
+            //Split_Counter += 1;
+
+            if( Split_Counter < Split_Count ){
+                /*
+                ascent (i in 0..5) {
+
+                    ShotA2( ObjMove_GetX( Obj ), ObjMove_GetY( Obj ), 0.5, i * 360/5, SHOT_SAKURA_RED, 30, SHOT_BALL_RED );
+                    // do something
+                }
+                */
+
+				int Laser_B = CreateStraightLaserA1( ObjMove_GetX( Obj ) + Length * cos( ObjStLaser_GetAngle( Obj ) ), ObjMove_GetY( Obj ) + Length * sin( ObjStLaser_GetAngle( Obj ) ), ObjStLaser_GetAngle( Obj ) + Angle_Split, Length, 10, 30, SHOT_LASER_DGREEN, 120 );
+				int Laser_C = CreateStraightLaserA1( ObjMove_GetX( Obj ) + Length * cos( ObjStLaser_GetAngle( Obj ) ), ObjMove_GetY( Obj ) + Length * sin( ObjStLaser_GetAngle( Obj ) ), ObjStLaser_GetAngle( Obj ) - Angle_Split, Length, 10, 30, SHOT_LASER_DPINK, 120 );
+                T_Split( Laser_B );
+                T_Split( Laser_C );
+
+				//Angle_Split += 10;
+                Split_Counter += 1;
+
+            }
+
+            wait( 120+20 );
+
+			T_Burst_Circle_A2( Obj, 40, 0.4, CC_RED );
+			
+            if( Split_Counter >= 2 ){
+				int Petal_A= ShotR1( ObjMove_GetX( Obj ) + Length * cos( ObjStLaser_GetAngle( Obj ) ), ObjMove_GetY( Obj ) + Length * sin( ObjStLaser_GetAngle( Obj ) ), 8, 0, ObjStLaser_GetAngle( Obj ) + 180 + 24, SHOT_SAKURA_RED, 30, DELAY_CLOUD_RED );     
+       			int Petal_B = ShotR1( ObjMove_GetX( Obj ) + Length * cos( ObjStLaser_GetAngle( Obj ) ), ObjMove_GetY( Obj ) + Length * sin( ObjStLaser_GetAngle( Obj ) ), 8, 0, ObjStLaser_GetAngle( Obj ) + 180 - 24, SHOT_SAKURA_RED, 30, DELAY_CLOUD_RED );     
+				ObjMove_AddPatternA2( Petal_A, 120, 0, NO_CHANGE, 0.005, 0.6, 0 );
+				ObjMove_AddPatternA2( Petal_B, 120, 0, NO_CHANGE, 0.005, 0.6, 0 );
+            }   
+			
+				/*
+			float Laser_Angle = ObjStLaser_GetAngle( Obj );
+
+            if( Split_Counter >= 2 ){
+                ascent ( a in 0..5) {
+
+					float Shot_X = ObjMove_GetX( Obj ) + a * ObjLaser_GetLength( Obj )/5 * cos( Laser_Angle );
+					float Shot_Y = ObjMove_GetY( Obj ) + a * ObjLaser_GetLength( Obj )/5 * sin( Laser_Angle );					
+
+                    int Petal = ShotA1( Shot_X, Shot_Y, 0, Laser_Angle + Shot_Angle, SHOT_SAKURA_RED, 30  );
+                    ObjMove_AddPatternA2( Petal, 120, 0, NO_CHANGE, 0.005, 0.6, 0 );
+
+					Shot_Angle =-Shot_Angle;
+                        // do something
+                }      
+            }      
+		*/
+        }
+
+
+    }
+
+	task T_BulletTrail( Obj, Color, Rate, Graphic, Dir ){
+
+        float Frame = 0;
+
+		while( !Obj_IsDeleted( Obj )){
+
+			//int Shot_Name_A = ShotR1( ObjMove_GetX(Obj), ObjMove_GetY(Obj), 0, 1,  ObjMove_GetAngle(Obj) + 180 + rand( -32, 32 ), SHOT_BALL_PURPLE, 0, SHOT_BALL_PURPLE );
+			//ObjRender_SetBlendType( Shot_Name_A, BLEND_ADD_ARGB );
+			//ObjRender_SetColor( Shot_Name_A, 255, 255, 255 );
+			//ObjShot_SetDeleteFrame( Shot_Name_A, 1 );
+
+			int Shot_Name_B = ShotR1( ObjMove_GetX(Obj), ObjMove_GetY(Obj), 0, 0,  ObjMove_GetAngle(Obj) + 180, Graphic, 0, Graphic );
+			ObjRender_SetBlendType( Shot_Name_B, BLEND_ADD_ARGB );
+			//ObjRender_SetColor( Shot_Name_B, Color[0], Color[1], Color[2] );
+			T_ManageTrail_Obj( Shot_Name_B, Frame );
+            Frame++;
+			//ObjShot_SetDeleteFrame( Shot_Name_B, 40  );			
+
+			wait( Rate );
+		}
+
+		task T_ManageTrail_Obj( Trail_Shot, Frame ){
+            
+            while( Shot_Go != true ){
+
+                yield;
+            }
+
+            if( Frame % 4 == 0 ){
+
+                float Angle_RNG = rand ( -24, 24 );
+
+				wait( rand( 10, 30 ) );
+				if( !Obj_IsDeleted( Trail_Shot ) ) {
+					int Shot_New_B = ShotA2( ObjMove_GetX( Trail_Shot ), ObjMove_GetY( Trail_Shot ), 0,  Dir + Angle_RNG, SHOT_STAR_GREEN, 8, DELAY_CLOUD_ORANGE );
+					ObjMove_AddPatternA2( Shot_New_B, 70, 0, NO_CHANGE, 0.005, 0.5, 0 );                
+
+					int Shot_New = ShotA2( ObjMove_GetX( Trail_Shot ), ObjMove_GetY( Trail_Shot ), 0,  Dir + Angle_RNG, SHOT_RICE_ORANGE, 8, DELAY_CLOUD_ORANGE );
+					ObjMove_AddPatternA2( Shot_New, 60, 0, NO_CHANGE, 0.005, 0.5, 0 );
+					ObjShot_SetDeleteFrame( Trail_Shot, 1 );	
+				}	
+                //ObjShot_SetDeleteFrame( Shot_New_B, 1 );	                
+
+            }
+            else{
+
+                //wait( rand( 1, 60 ) );
+
+                ObjShot_SetDeleteFrame( Trail_Shot, 1 );			
+                //Obj_Delete( Trail_Shot );
+            }
+
+            //Shot_Go = false;
+
+		}
+
+
+	}
+}	
+
+
+//-----------------------------------------------------Death---------------------------------------------------------
+
+task T_End {
+	
+    while( ObjEnemy_GetInfo( bossObj, INFO_LIFE ) > 0 ) {
+	     yield;
+	}
+	
+	if( ObjEnemyBossScene_GetInfo( GetEnemyBossSceneObjectID, INFO_IS_LAST_STEP ) ){
+
+		NotifyEventAll( EV_CLEAR_ENEMY_SHOTS, GetPlayerObjectID(), 60, 12 );
+		
+		yield;
+		
+		SetAutoDeleteObject(true);
+		T_Boss_Shotdown( bossObj, "Petal", CC_RED );
+		wait( 200 );
+		
+		Obj_Delete( bossObj );	
+		
+		ENEMY_CLEAR = true;
+		
+		yield;
+		
+		ENEMY_CLEAR = false;
+		
+		wait( 500 );
+		
+		CloseScript( GetOwnScriptID() );
+		
+	}	
+	else{
+	
+	
+		NotifyEventAll( EV_CLEAR_ENEMY_SHOTS, GetPlayerObjectID(), 60, 12 );
+		//DeleteShotAll( TYPE_ALL, TYPE_ITEM );
+		
+		yield;
+		
+		SetAutoDeleteObject(true);
+		
+		Obj_Delete( bossObj );	
+		
+		wait( 500 );
+		
+		CloseScript( GetOwnScriptID() );
+	
+	}
+	
+	//SetAutoDeleteObject(true);
+	
+	//Obj_Delete( bossObj );	
+	//CloseScript( GetOwnScriptID() );
+	
+}
+

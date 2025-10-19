@@ -1,0 +1,572 @@
+//-----------------------------------------------------------------------------
+
+function Create_Item_A1( X, Y, Type ){
+	
+	alternative(Type)
+	case( ITEM_S_SCORE ){
+		let Item_Obj = Render_Item_A1( X, Y, Type, [ 16, 0, 32, 16 ] );
+		T_Item_Handler_A1( Item_Obj, Type );
+	}	
+	case( ITEM_S_SCORE_FULL ){
+		let Item_Obj = Render_Item_A1( X, Y, Type, [ 16, 32, 32, 48 ] );
+		T_Item_Handler_A1( Item_Obj, Type );
+	}
+	case( ITEM_S_LIFE_PIECE ){
+
+		T_PlaySE( SE_PIECE_00, 30 );
+		let Item_Obj = Render_Item_A1( X, Y, Type, [ 48, 0, 80, 32 ] );
+		T_Item_Handler_A1( Item_Obj, Type );
+		T_Piece_Handler_A( Item_Obj, ITEM_S_LIFE_PIECE );
+	}	
+	case( ITEM_S_SPELL_PIECE ){
+		
+		T_PlaySE( SE_PIECE_00, 30 );
+		let Item_Obj = Render_Item_A1( X, Y, Type, [ 80, 0, 112, 32 ] );
+		T_Item_Handler_A1( Item_Obj, Type );
+		T_Piece_Handler_A( Item_Obj, ITEM_S_SPELL_PIECE );
+	}		
+	case( ITEM_S_BONUS ){
+		let Item_Obj = Render_Item_A1( X, Y, Type, [ 31, 0, 47, 15 ] );
+		T_Item_Handler_A2( Item_Obj, Type );
+	}		
+	
+}	
+
+function Create_ShotDelete_Item( X, Y ){
+	
+	let Item_Obj = CreateItemU1( "ITEM_POW", X, Y, 1000 );
+	//T_Item_Handler_A1( Item_Obj, ITEM_S_BONUS );
+	return Item_Obj;
+
+}	
+
+
+function Collect_Item_Check( Obj, Type ){
+	
+	int Point_Value = 0;
+	
+	alternative(Type)
+	case( ITEM_S_SCORE ){
+
+		T_PlaySE( SE_ITEM, 30 );
+		if( GetPlayerY() <= GetCommonData( "POC_LINE", 140 ) ){
+			
+			Point_Value = 1000 + GetPoint() + GetGraze();
+			
+			AddScore( Point_Value );
+			T_RenderScore( Obj, Point_Value,[ 255, 255, 50 ] );
+			
+		}
+		else{
+			T_RenderScore( Obj, 100, [ 255, 255, 255 ]);
+			AddScore( 100 );
+		}	
+		
+	}
+	case( ITEM_S_SCORE_FULL ){
+
+		T_PlaySE( SE_ITEM, 30 );
+		Point_Value = 1000 + GetPoint() + GetGraze();
+			
+		AddScore( Point_Value );
+		T_RenderScore( Obj, Point_Value,[ 255, 255, 50 ] );
+		
+	}	
+	case( ITEM_S_LIFE_PIECE ){
+
+		T_PlaySE( SE_PIECE_01, 36 );
+		SetCommonData("Life_Piece_Count", GetCommonData( "Life_Piece_Count", 0 ) + 1 );
+		AddScore( 1000 );
+		
+		let Piece_Tracker = rtos( "0", GetCommonData( "Life_Piece_Count", 0 ) ) ~ "/4";
+		if( GetCommonData( "Life_Piece_Count", 0 ) < 4 ){
+			T_RenderPieceTest( Piece_Tracker, 8, [ 255, 155, 255 ] );
+		}
+		else{
+			
+			T_RenderPieceTest( "Life Extend!", 32, [ 255, 155, 255 ] );
+			
+		}			
+		
+		if(GetCommonData( "Life_Piece_Count", 0 ) == 4 ){
+			
+			//T_RenderPieceTest( "+1 Spell!", [ 155, 255, 155 ] );
+			T_PlaySE( SE_BOMB_EXTEND_00, 35 );
+			//ExtendText;
+			SetPlayerLife( GetPlayerLife() + 1 );
+			SetCommonData( "Life_Piece_Count", 0 );
+			AddScore( 1000 );
+		}			
+		
+	}	
+	case( ITEM_S_SPELL_PIECE ){
+
+		T_PlaySE( SE_PIECE_01, 36 );
+		SetCommonData("Spell_Piece_Count", GetCommonData( "Spell_Piece_Count", 0 ) + 1 );
+		AddScore( 1000 );
+		
+		let Piece_Tracker = rtos( "0", GetCommonData( "Spell_Piece_Count", 0 ) ) ~ "/4";
+		if( GetCommonData( "Spell_Piece_Count", 0 ) < 4 ){
+			T_RenderPieceTest( Piece_Tracker, 8, [ 155, 255, 155 ] );
+		}
+		else{
+			
+			T_RenderPieceTest( "Spell Extend!", 32, [ 155, 255, 155 ] );
+			
+		}			
+		
+		if(GetCommonData( "Spell_Piece_Count", 0 ) == 4 ){
+			
+			//T_RenderPieceTest( "+1 Spell!", [ 155, 255, 155 ] );
+			T_PlaySE( SE_BOMB_EXTEND_00, 35 );
+			//ExtendText;
+			SetPlayerSpell( GetPlayerSpell() + 1 );
+			SetCommonData( "Spell_Piece_Count", 0 );
+			AddScore( 1000 );
+		}			
+		
+	}		
+	case( ITEM_S_BONUS ){
+
+		T_PlaySE( SE_ITEM, 30 );
+		if( GetPlayerY() <= GetCommonData( "POC_LINE", 140 ) ){
+			
+			Point_Value = 1000 + GetPoint() + GetGraze();
+			
+			AddScore( Point_Value );
+			T_RenderScore( Obj, Point_Value,[ 255, 255, 50 ] );
+			
+		}
+		else{
+			T_RenderScore( Obj, 100, [ 255, 255, 255 ]);
+			AddScore( 100 );
+		}	
+		
+		
+	}	
+	
+	
+}
+
+function Render_Item_A1( X, Y, Type, Rect ){
+	
+	let Item_Obj;
+	
+	let Item_Tex = GetCurrentScriptDirectory() ~ "./../Resource/Textures/System/Items.png";
+	Item_Obj = Render2D_Texture_A1( Item_Tex, Rect, X, Y, 1, 25 );
+	Obj_SetRenderPriorityI( Item_Obj, GetItemRenderPriorityI() );
+
+	return( Item_Obj );
+}
+
+function T_CheckRange(Obj){
+	
+	// Checks if the item is in collecting range of the player ( default is 20 ).
+	return ( GetPlayerState() == STATE_NORMAL && ( GetDistance( ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), GetPlayerX(), GetPlayerY() ) < 20 ));
+	
+}
+
+task T_Item_Handler_A1( Obj, Type ){
+	
+	ObjRender_SetTextureFilter( Obj, FILTER_NONE, FILTER_NONE, FILTER_NONE );
+	bool MoveToPL = false;
+	float ObjX = ObjRender_GetX( Obj );
+	float ObjY = ObjRender_GetY( Obj );	
+	float VSpeed = -4;
+	
+	T_Spawn_Anim( Obj );
+	loop( 25 ){
+		
+		ObjY += VSpeed -0.1;
+		ObjRender_SetY( Obj, ObjY);
+		VSpeed = min( 1.25, VSpeed + 0.08 );			
+		yield;
+	}	
+	
+	
+	while( !Obj_IsDeleted( Obj ) && ObjY < GetStgFrameHeight + 32 && ObjX < GetStgFrameWidth + 32 && ObjX > -32){	
+		
+		// Moving Down.
+		ObjRender_SetY( Obj, ObjY );
+		ObjY += VSpeed;
+		VSpeed = 1;
+		
+		// Cancel Collection Movement if player Dies.
+		if (GetPlayerState() != STATE_NORMAL) {
+			MoveToPL = false;
+		}		
+		// Point of Collection Line.
+		if (GetPlayerState() == STATE_NORMAL && GetPlayerY() <= GetCommonData( "POC_LINE", 140 ) ) {
+			MoveToPL = true;
+		}
+		// Move to Player if within range.
+		if ( GetDistance( ObjX, ObjY, GetPlayerX(), GetPlayerY() ) < 64 ){
+			MoveToPL = true;
+		}	
+		// Moving to Player
+		if ( MoveToPL == true ) {
+			let Angle = atan2( GetPlayerY() - ObjY, GetPlayerX() - ObjX );
+			ObjX += 8*cos(Angle); 
+			ObjY += 8*sin(Angle);
+			ObjRender_SetPosition( Obj, ObjX, ObjY, 0);
+		} 	
+		// Collecting Task
+		if ( T_CheckRange( Obj )){
+			
+			Collect_Item_Check( Obj, Type );
+			Obj_Delete( Obj );
+			break;
+			
+		}		
+		yield;
+	}
+	Obj_Delete( Obj );
+	
+	task T_Spawn_Anim( Obj ){
+
+		loop(2){
+			let Spin = round( prand( 16, 18 ) );
+			ascent( a in 1..Spin+1 ){
+				if( !Obj_IsDeleted( Obj ) ){
+					ObjRender_SetAngleZ( Obj, a*360/Spin );
+				}
+				yield;
+			}
+		}		
+
+	}		
+	
+}
+
+task T_Item_Handler_A2( Obj, Type ){
+	
+	//This one is for the bonus items that appear when bullets are deleted. - Seija
+	
+	bool MoveToPL = false;
+	float ObjX = ObjRender_GetX( Obj );
+	float ObjY = ObjRender_GetY( Obj );	
+	float VSpeed = -5;
+	float Angle = 0;
+	
+	float RNG = rand( -VSpeed, VSpeed );
+	//T_Spawn_Anim( Obj );
+	loop( 64 ){
+		
+		ObjX += RNG/5;
+		ObjY += VSpeed/5;
+		ObjRender_SetX( Obj, ObjX );
+		ObjRender_SetY( Obj, ObjY );
+		VSpeed = min( 1.25, VSpeed + 0.2 );			
+		yield;
+	}	
+	
+	VSpeed = 1;
+	
+	while( !Obj_IsDeleted( Obj ) && ObjY < GetStgFrameHeight + 32 && ObjX < GetStgFrameWidth + 32 && ObjX > -32){	
+		
+		// Moving Down.
+		ObjRender_SetY( Obj, ObjY );
+		ObjY += VSpeed;
+		VSpeed = 1;
+		
+		ObjRender_SetAngleZ( Obj, ObjRender_GetAngleZ( Obj ) + 1 );
+		
+		// Cancel Collection Movement if player Dies.
+		if (GetPlayerState() != STATE_NORMAL) {
+			MoveToPL = false;
+		}		
+		// Point of Collection Line.
+		if (GetPlayerState() == STATE_NORMAL && GetPlayerY() <= GetCommonData( "POC_LINE", 140 ) ) {
+			MoveToPL = true;
+		}
+		// Move to Player if within range.
+		if ( GetDistance( ObjX, ObjY, GetPlayerX(), GetPlayerY() ) < 64 ){
+			MoveToPL = true;
+		}	
+		// Moving to Player
+		if ( MoveToPL == true ) {
+			let Angle = atan2( GetPlayerY() - ObjY, GetPlayerX() - ObjX );
+			ObjX += 8*cos(Angle); 
+			ObjY += 8*sin(Angle);
+			ObjRender_SetPosition( Obj, ObjX, ObjY, 0);
+		} 	
+		// Collecting Task
+		if ( T_CheckRange( Obj )){
+			
+			Collect_Item_Check( Obj, Type );
+			Obj_Delete( Obj );
+			break;
+			
+		}		
+		yield;
+	}
+	Obj_Delete( Obj );
+	
+	task T_Spawn_Anim( Obj ){
+
+		loop( 2 ){
+			let Spin = round( prand( 16, 18 ) );
+			ascent( a in 1..Spin+1 ){
+				if( !Obj_IsDeleted( Obj ) ){
+					ObjRender_SetAngleZ( Obj, a*360/Spin );
+				}
+				yield;
+			}
+		}		
+
+	}	
+	
+	
+}
+
+task T_Piece_Handler_A( Obj, Type ){
+	
+	let Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/System/Item_Effect.png";
+	
+	let Angle_X = 1;
+	let Angle_Y = 1;
+	let Color_Y_A = 0;
+	let Color_Y_B = 0;	
+	
+	if( Type == ITEM_S_LIFE_PIECE ){
+		
+		Color_Y_A = 0;
+		Color_Y_B = 80;
+		
+	}	
+	else{
+		
+		Color_Y_A = 80;
+		Color_Y_B = 160;
+		
+	}		
+	
+	int Bubble_Effect = Render2D_Texture_A1( Path, [ 0, Color_Y_A, 80, Color_Y_B ], ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), 1, 0.42 );
+	ObjRender_SetAlpha( Bubble_Effect, 130 );
+	ObjRender_SetBlendType( Bubble_Effect, BLEND_ADD_ARGB );
+	
+	int Ring_Effect_A = Render2D_Texture_A1( Path, [ 80, Color_Y_A, 160, Color_Y_B ], ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), 1, 0.42 );	
+	ObjRender_SetAlpha( Ring_Effect_A, 130 );
+	ObjRender_SetBlendType( Ring_Effect_A, BLEND_ADD_ARGB );	
+	
+	int Ring_Effect_B = Render2D_Texture_A1( Path, [ 80, Color_Y_A, 160, Color_Y_B ], ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), 1, 0.42 );	
+	ObjRender_SetAlpha( Ring_Effect_B, 130 );
+	ObjRender_SetBlendType( Ring_Effect_B, BLEND_ADD_ARGB );
+
+	//This is a complete mess but it dosen't need to be fancy or super performant since theres like at max two of these on screen at a time lol - Seija
+
+	async{
+		
+		float Spawn_Time = 30;
+		//Spawn animation.
+		
+		ascent( a in 0..Spawn_Time ){
+
+			ObjRender_SetScaleXYZ( Bubble_Effect, Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), 0 );
+			ObjRender_SetScaleXYZ( Ring_Effect_A, Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), 0 );
+			ObjRender_SetScaleXYZ( Ring_Effect_B, Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), 0 );
+			
+			yield;
+
+		}		
+		
+	}	
+
+	async{
+		
+		while( !Obj_IsDeleted( Obj ) ){
+			
+			ObjRender_SetPosition( Bubble_Effect, ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), 0 );
+			ObjRender_SetPosition( Ring_Effect_A, ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), 0 );
+			ObjRender_SetPosition( Ring_Effect_B, ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), 0 );
+			
+			ObjRender_SetAngleXYZ( Ring_Effect_A, ObjRender_GetAngleX( Ring_Effect_A ) + 1, ObjRender_GetAngleY( Ring_Effect_A ) + 1, ObjRender_GetAngleZ( Ring_Effect_A ) + 1 );
+			ObjRender_SetAngleXYZ( Ring_Effect_B, ObjRender_GetAngleX( Ring_Effect_B ) - 2, ObjRender_GetAngleY( Ring_Effect_B ) - 2, ObjRender_GetAngleZ( Ring_Effect_B ) - 2 );
+			
+			yield;
+		}	
+
+		if( ObjRender_GetY( Obj ) < GetStgFrameHeight + 32 && ObjRender_GetX( Obj ) < GetStgFrameWidth + 32 && ObjRender_GetX( Obj ) > -32 ){ T_Piece_Collect(); }
+		else{
+		
+			Obj_Delete( Bubble_Effect );
+			Obj_Delete( Ring_Effect_A );
+			Obj_Delete( Ring_Effect_B );
+		}
+		
+	}	
+	
+	task T_Piece_Collect(){
+		
+		int Slurp_Effect = Render2D_Texture_A1( Path, [ 0, Color_Y_A, 80, Color_Y_B ], GetPlayerX(), GetPlayerY(), 1, 0.42 );
+		ObjRender_SetAlpha( Slurp_Effect, 100 );
+		ObjRender_SetBlendType( Slurp_Effect, BLEND_ADD_ARGB );		
+		
+		float Spawn_Time = 16;
+		
+		async{
+			ascent( a in 0..Spawn_Time ){
+				
+				ObjRender_SetAlpha( Slurp_Effect, 100 - a * 100/Spawn_Time );
+			
+				yield;
+			}
+			
+		}	
+		
+		descent( a in 0..Spawn_Time ){
+			
+			ObjRender_SetPosition( Slurp_Effect, GetPlayerX(), GetPlayerY(), 0 );
+			ObjRender_SetPosition( Bubble_Effect, GetPlayerX(), GetPlayerY(), 0 );
+			ObjRender_SetPosition( Ring_Effect_A, GetPlayerX(), GetPlayerY(), 0 );
+			ObjRender_SetPosition( Ring_Effect_B, GetPlayerX(), GetPlayerY(), 0 );
+
+			ObjRender_SetScaleXYZ( Slurp_Effect, Interpolate_Smoother( 2, 0, a/Spawn_Time ), Interpolate_Smoother( 2, 0, a/Spawn_Time ), 0 );
+			ObjRender_SetScaleXYZ( Bubble_Effect, Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), 0 );
+			ObjRender_SetScaleXYZ( Ring_Effect_A, Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), 0 );
+			ObjRender_SetScaleXYZ( Ring_Effect_B, Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), Interpolate_Smoother( 0.1, 1, a/Spawn_Time ), 0 );
+			
+			yield;
+
+		}		
+		
+		Obj_Delete( Slurp_Effect );
+		Obj_Delete( Bubble_Effect );
+		Obj_Delete( Ring_Effect_A );
+		Obj_Delete( Ring_Effect_B );		
+		
+	}	
+	
+	
+}	
+
+//-----------------------------------------------------------------------------
+
+task T_RenderPieceTest( Text, Offset, Color ){
+	
+	let Score = ObjText_Create;
+	
+	ObjRender_SetX( Score, GetPlayerX() - Offset );
+	ObjRender_SetY( Score, GetPlayerY() );
+	Obj_SetRenderPriority( Score, 0.8 );
+	
+	
+	ObjText_SetFontBorderType( Score, BORDER_SHADOW );
+	ObjText_SetFontBorderWidth( Score, 1.2 );
+	ObjText_SetFontColorTop( Score, 255, 255 ,255 );
+	ObjText_SetFontSize( Score, 12 );
+	ObjText_SetMaxWidth( Score, 64 );
+	ObjText_SetFontBorderColor( Score, 0, 0, 0 );
+	ObjText_SetFontType( Score, "Chaney Thin Normal");
+	//ObjText_SetHorizontalAlignment( Score, ALIGNMENT_CENTER );
+	
+	ObjText_SetFontColorTop( Score, Color[0], Color[1], Color[2] );
+	ObjText_SetFontColorBottom( Score, Color[0], Color[1], Color[2] );
+	
+	ObjText_SetText( Score, Text );
+	
+	ascent( a in 0..64 ){
+			
+		ObjRender_SetY( Score,  ObjRender_GetY( Score ) -1 + a/64 );
+		ObjRender_SetAlpha( Score, ( a / 64 ) * 255 );
+		yield;
+			
+	}	
+	
+	descent( a in 0..10 ){
+			
+		ObjRender_SetAlpha( Score, ( a / 10) * 255 );
+		yield;
+			
+	}	
+	
+	Obj_Delete( Score );
+	
+}	
+
+task T_RenderScore( Target, Value, Color ){
+	
+	let Score = ObjText_Create;
+	
+	ObjRender_SetX( Score, GetPlayerX() -8 );
+	ObjRender_SetY( Score, GetPlayerY() );
+	Obj_SetRenderPriority( Score, 0.8 );
+	
+	
+	ObjText_SetFontBorderType( Score, BORDER_SHADOW );
+	ObjText_SetFontBorderWidth( Score, 1.2 );
+	ObjText_SetFontColorTop( Score, 255, 255 ,255 );
+	ObjText_SetFontSize( Score, 12 );
+	ObjText_SetMaxWidth( Score, 400 );
+	ObjText_SetFontBorderColor( Score, 0, 0, 0 );
+	ObjText_SetFontType( Score, "Chaney Thin Normal");
+	
+	ObjText_SetFontColorTop( Score, Color[0], Color[1], Color[2] );
+	ObjText_SetFontColorBottom( Score, Color[0], Color[1], Color[2] );
+	
+	ObjText_SetText( Score, IntToString( Value) );
+	
+	ascent( a in 0..64 ){
+			
+		ObjRender_SetY( Score,  ObjRender_GetY( Score ) -1 + a/64 );
+		ObjRender_SetAlpha( Score, ( a / 64 ) * 255 );
+		yield;
+			
+	}	
+	
+	descent( a in 0..10 ){
+			
+		ObjRender_SetAlpha( Score, ( a / 10) * 255 );
+		yield;
+			
+	}	
+	
+	Obj_Delete( Score );
+	
+}	
+
+task T_RenderScore_Shot( Target, Value, Color ){
+	
+	let Score = ObjText_Create;
+	
+	ObjRender_SetX( Score, ObjRender_GetX( Target ) -8 );
+	ObjRender_SetY( Score, ObjRender_GetY( Target ) );
+	Obj_SetRenderPriority( Score, 0.8 );
+	
+	
+	ObjText_SetFontBorderType( Score, BORDER_SHADOW );
+	ObjText_SetFontBorderWidth( Score, 1.2 );
+	ObjText_SetFontColorTop( Score, 255, 255 ,255 );
+	ObjText_SetFontSize( Score, 12 );
+	ObjText_SetMaxWidth( Score, 400 );
+	ObjText_SetFontBorderColor( Score, 0, 0, 0 );
+	ObjText_SetFontType( Score, "Chaney Thin Normal");
+	
+	ObjText_SetFontColorTop( Score, Color[0], Color[1], Color[2] );
+	ObjText_SetFontColorBottom( Score, Color[0], Color[1], Color[2] );
+	
+	ObjText_SetText( Score, IntToString( Value) );
+	AddScore( Value );
+	
+	ascent( a in 0..64 ){
+			
+		ObjRender_SetY( Score,  ObjRender_GetY( Score ) -1 + a/64 );
+		ObjRender_SetAlpha( Score, ( a / 64 ) * 255 );
+		yield;
+			
+	}	
+	
+	descent( a in 0..10 ){
+			
+		ObjRender_SetAlpha( Score, ( a / 10) * 255 );
+		yield;
+			
+	}	
+	
+	//AddScore( Value );
+	
+	Obj_Delete( Score );
+	
+}
+
+//-----------------------------------------------------------------------------

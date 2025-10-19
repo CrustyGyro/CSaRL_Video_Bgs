@@ -1,0 +1,642 @@
+//---------------------------------------------------------------------------------
+
+	#include "./../System/Common.dnh"	
+	#include "./Lib_Item.dnh"
+
+//---------------------------------------------------------------------------------
+
+task T_HitEffect( Target ){
+	
+	let Base_HP = ObjEnemy_GetInfo( Target, INFO_LIFE );
+	let Current_HP = Base_HP;
+	float Frame = 0;
+	float Item_Frame = 0;
+	float Shot_Count = 20;
+	
+	//ObjEnemy_SetIntersectionCircleToShot( bossObj, bossX, bossY, 8 );
+	while(!Obj_IsDeleted( Target )){
+		
+		float X = ObjMove_GetX( Target );
+		float Y = ObjMove_GetY( Target );
+		
+		Current_HP = ObjEnemy_GetInfo( Target, INFO_LIFE );
+		
+		if( Current_HP != Base_HP ){
+			
+			if( Item_Frame % Shot_Count == 0 ){
+				
+				Create_Item_A1( X + rand( -8, 8 ), Y + rand( -8, 8 ), ITEM_S_BONUS );
+				
+			}	
+			
+			if( Frame == 0 ){
+				
+				T_PlaySE( SE_DAMAGE, 20 );
+				
+				ObjRender_SetColor( Target, 100, 100, 255 );
+				
+				wait( 2 );
+			
+				ObjRender_SetColor( Target, 255, 255, 255 );
+			
+				Base_HP = Current_HP;
+				Frame = 2;
+			
+			}
+			else{
+				
+				Frame--;
+			}	
+		}	
+		
+		Item_Frame++;
+		
+		yield;
+		
+	}	
+
+}
+
+//---------------------------------------------------------------------------------
+
+task T_Charge_A1( Obj, Duration, Type, Color ){
+	
+	T_Concentrate_Circle_A( ObjRender_GetX(Obj), ObjRender_GetY(Obj), 256, Color );
+	
+	loop( Duration ) {
+		if(!Obj_IsDeleted( Obj )) {
+			T_Effect_Obj( ObjRender_GetX(Obj), ObjRender_GetY(Obj), prand(0,360), Type, [ 255, 255, 255 ] );
+			T_Effect_Obj( ObjRender_GetX(Obj), ObjRender_GetY(Obj), prand(0,360), Type, Color );
+		}
+		yield;
+	}
+	loop( 4 ) {
+		if(!Obj_IsDeleted( Obj )) {
+			T_Concentrate_Glow_A( ObjRender_GetX(Obj), ObjRender_GetY(Obj), 150, CC_WHITE );
+			T_Concentrate_Glow_A( ObjRender_GetX(Obj), ObjRender_GetY(Obj), 200, Color );
+		}
+		wait( 4 );
+	}
+}
+
+task T_Charge_B1( Obj, Angle, Size, Variation, Duration, Radius, Color ){
+
+	loop( Duration ) {
+		if( !Obj_IsDeleted( Obj )) {
+			T_Effect_Obj_B( Obj, Angle, Size, Variation, Duration, Radius, Color );
+		}
+		yield;
+	}
+
+}
+
+task T_Charge_Burst_A( Obj, Type, Color ){
+	
+	T_Burst_Circle_A1( Obj, Color );
+	
+	loop( 3 ) {
+		if(!Obj_IsDeleted( Obj )) {
+			ascent( i in 0..8 ) {
+				T_Effect_Obj_Explode( ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), rand( 3, 8 ), Type, Color );
+				T_Effect_Obj_Explode( ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), rand( 3, 8 ), Type, [ 255, 255, 255 ] );
+				//yield;
+			}
+		}
+		yield;
+	}	
+	
+}	
+
+task T_Boss_Shotdown( Obj, Type, Color ){
+	
+	ObjMove_SetDestAtWeight( Obj, ObjMove_GetX( Obj ) + rand( -128, 128 ), ObjMove_GetY( Obj ) + rand( -128, 128 ), 15, 0.1 );
+	
+	//Play_SFX( SFX_BOSSDIE_01, 40 );
+	
+	T_PlaySE( SE_BURST_01, 28 );
+	T_SimpleScreenShake( 30 );
+	
+	T_Burst_Circle_A1( Obj, Color );
+	
+	loop( 18 ) {
+		if( !Obj_IsDeleted( Obj )) {
+			ascent( i in 0..6 ) {
+				T_Effect_Obj_Explode( ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), rand( 1, 5 ), Type, Color );
+				T_Effect_Obj_Explode( ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), rand( 1, 5 ), Type, [ 255, 255, 255 ] );
+				yield;
+			}
+		}
+		yield;
+	}
+	
+	T_ShotDown_Inverted( ObjRender_GetX( Obj ), ObjRender_GetY( Obj ) );
+	//Play_SFX( SFX_BOSSDIE_01, 50 );
+	
+	T_PlaySE( SE_BURST_01, 32 );
+	T_SimpleScreenShake( 30 );
+	
+	T_Burst_Circle_A1( Obj, Color );
+	
+	loop( 4 ) {
+		ascent( i in 0..10 ) {
+			T_Effect_Obj_Explode( ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), rand( 3, 8 ), Type, Color );
+			T_Effect_Obj_Explode( ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), rand( 3, 8 ), Type, [ 255, 255, 255 ] );
+			yield;
+		}
+		yield;
+	}
+	
+	//ObjEnemy_SetLife( Obj, 0 );
+	Obj_Delete( Obj );	
+
+}	
+
+
+//---------------------------------------------------------------------------------
+
+task T_Effect_Obj( X, Y, dir, Type, Color ) {
+	
+	let Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/Petal.png";
+	
+	/*
+	if( Type == "Maple" ) { Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/Maple.png"; }
+	if( Type == "Petal" ) { Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/Petal.png"; }
+	if( Type == "Snow" ) { Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/Snow.png"; }
+	if( Type == "Star" ) { Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/Star.png"; }
+	*/
+	let Radius = 200;
+	let Rotation = prand( 0,180 );
+	let Alpha = 0;
+	let Scale_XYZ = 0.7*( Radius/200 );
+	
+	let AngX = prand( 0, 360 );
+	let AngY = prand( 0, 360 );
+	let AngX_R = prand( -4, 4 );
+	let AngY_R = prand( -4, 4 );
+	
+	let Obj = Render2D_Texture_A1( Path, [ 0, 0, 128, 128 ], X, Y, Scale_XYZ, 0.40 );	
+	ObjRender_SetBlendType( Obj, BLEND_ADD_RGB );
+	
+	while( !Obj_IsDeleted( Obj )) {
+		
+		ObjRender_SetPosition( Obj, X + Radius*cos(dir), Y + Radius*sin(dir), 0 );
+		ObjRender_SetScaleXYZ( Obj, Scale_XYZ, Scale_XYZ, Scale_XYZ );
+		ObjRender_SetAngleXYZ( Obj, AngX, AngY, Rotation );
+		ObjRender_SetColor( Obj, Color[0]*( Alpha/200 ), Color[1]*( Alpha/200 ), Color[2]*( Alpha/200 ));
+		ObjRender_SetAlpha( Obj, Alpha );
+			
+			if( Alpha < 200 && Radius >= 10 ) { Alpha += 5; }
+			if( Radius < 10 ) { Alpha -= 40; }
+			if( Alpha <= 0) { Obj_Delete( Obj ); }
+			
+		AngX += AngX_R;
+		AngY += AngY_R;			
+		Rotation += prand( 3, 4 );
+		Radius -= 4;
+		
+		yield;
+	}
+}
+
+task T_Effect_Obj_Explode( X, Y, Speed, Type, Color ){
+	
+	//let Obj = ObjPrim_Create(OBJ_SPRITE_2D);
+	let Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/Petal.png";
+
+	let Angle = rand( 0, 360 );
+	let Alpha = 200;
+
+	let AngX_R = rand( 0, 200 );
+	let AngY_R = rand( 0, 200 );	
+	
+	let Obj = Render2D_Texture_A1( Path, [ 0, 0, 128, 128 ], X, Y, 0.6, 0.40 );	
+	ObjRender_SetBlendType( Obj, BLEND_ADD_RGB );
+	//ObjRender_SetColor( Obj, Color[0], Color[1], Color[2] );
+	
+	while( !Obj_IsDeleted( Obj ) ) {
+		
+		ObjRender_SetPosition( Obj, X, Y, 0 );
+		ObjRender_SetAngleXYZ( Obj, AngX_R, AngY_R, AngX_R );
+		ObjRender_SetColor( Obj, Color[0] * ( Alpha/255 ), Color[1] * ( Alpha/255 ), Color[2] * ( Alpha/255 ) );
+		ObjSprite2D_SetDestCenter( Obj );
+		ObjRender_SetAlpha( Obj, Alpha );
+		Speed -= 0.1;
+		
+		AngX_R += rand( 2, 2 );
+		AngY_R += rand( -2, -2 );		
+		
+		X += Speed *cos( Angle );
+		Y += Speed *sin( Angle );
+		//Alpha -= 2;
+		
+		if( Speed <= 1.8 ) { Alpha -= 5; }
+		if( Speed <= 1 && Alpha <= 0) { Obj_Delete( Obj ); }
+		yield;
+	}	
+	
+}	
+
+//--------------------------------------------------
+
+task T_Concentrate_Circle_A( X, Y, Radius, Color ) {
+	
+	let Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/CircleEff.png";
+	
+	let Alpha = 0;
+	let Scale_XYZ = 4*( Radius/200 );
+	
+	let Obj = Render2D_Texture_A1( Path, [ 0, 0, 128, 128 ], X, Y, Scale_XYZ, 0.41 );
+	ObjRender_SetBlendType( Obj, BLEND_ADD_RGB );	
+
+	while( !Obj_IsDeleted( Obj )) {
+		
+		ObjRender_SetPosition( Obj, X, Y, 0 );
+		ObjRender_SetScaleXYZ( Obj, Scale_XYZ, Scale_XYZ, Scale_XYZ );
+		ObjRender_SetColor( Obj, Color[0]*( Alpha/155 ), Color[1]*( Alpha/155 ), Color[2]*( Alpha/155 ));
+		
+		Alpha += 200/90;
+		if( Scale_XYZ <= 0 ) { Obj_Delete( Obj ); } 
+			
+		Scale_XYZ -= 0.4/5;
+		yield;
+	}	
+}	
+
+task T_Concentrate_Glow_A( X, Y, Radius, Color ){
+	
+	let Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/Glow.png";
+	
+	let Alpha = 0;
+	let Scale_XYZ = 4*( Radius/200 );
+	let Rotation = prand( 0, 360 );
+	let RNG = prand( -8, 8 );
+	
+	let Obj = Render2D_Texture_A1( Path, [ 0, 0, 128, 128 ], X, Y, Scale_XYZ, 0.41 );
+	ObjRender_SetBlendType( Obj, BLEND_ADD_RGB );		
+	
+
+	while( !Obj_IsDeleted( Obj )) {
+		
+		ObjRender_SetPosition( Obj, X, Y, 0 );
+		ObjRender_SetScaleXYZ( Obj, Scale_XYZ, Scale_XYZ, Scale_XYZ );
+		ObjRender_SetAngleXYZ( Obj, 0, 0, Rotation );
+		ObjRender_SetColor( Obj, Color[0]*( Alpha/255 ), Color[1]*( Alpha/255 ), Color[2]*( Alpha/255 ));
+		
+		Alpha += 2;
+		if( Scale_XYZ <= 0 ) { Obj_Delete( Obj ); } 
+			
+		Rotation += 8;	
+		Scale_XYZ -= 0.4/5;
+		yield;
+	}	
+}	
+
+//--------------------------------------------------
+
+task T_Effect_Obj_B( Obj, Angle, Size, Variation, Duration, Radius, Color ){
+	
+	//Ill clean dis up laterrrrrr
+	
+	let Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/Particle_00.png";
+	
+	float Color_Size = Size + 0.1;	
+	float RNG = prand( -Variation, Variation );	
+					 
+	let Charge_Obj = Render2D_Texture_A1( Path, [ 0, 0, 64, 64 ], ObjMove_GetX( Obj ), ObjMove_GetY( Obj ), Size, 0.50 );
+	ObjRender_SetBlendType( Charge_Obj, BLEND_SUBTRACT );	
+	
+	let Charge_Obj_Color = Render2D_Texture_A1( Path, [ 0, 0, 64, 64 ], ObjMove_GetX( Obj ), ObjMove_GetY( Obj ), Size, 0.49 );
+	ObjRender_SetBlendType( Charge_Obj_Color, BLEND_ADD_ARGB );
+	
+	ObjRender_SetColor( Charge_Obj_Color, Color[ 0 ], Color[ 1 ], Color[ 2 ] );
+
+	
+	descent( a in 0..Duration ){	
+	
+		ObjRender_SetScaleXYZ( Charge_Obj, Size - a * 1/Duration * Size , Size - a * 1/Duration * Size, 0 );
+		ObjRender_SetScaleXYZ( Charge_Obj_Color, Color_Size - a * 1/Duration * Color_Size, Color_Size - a * 1/Duration * Color_Size, 0 );
+	
+		ObjRender_SetX( Charge_Obj, ObjMove_GetX( Obj ) + ( a * Radius ) * sin( a * 4 + Angle + RNG ) );
+		ObjRender_SetY( Charge_Obj, ObjMove_GetY( Obj ) + ( a * Radius ) * cos( a * 4 + Angle + RNG) );
+		
+		ObjRender_SetX( Charge_Obj_Color, ObjMove_GetX( Obj ) + ( a * Radius ) * sin( a * 4 + Angle + RNG ) );
+		ObjRender_SetY( Charge_Obj_Color, ObjMove_GetY( Obj ) + ( a * Radius ) * cos( a * 4 + Angle + RNG) );		
+	
+		yield;
+	
+	}
+	
+	ascent( a in 0..40 ){	
+	
+		ObjRender_SetScaleXYZ( Charge_Obj, Size - a * 1/40 * Size , Size - a * 1/40 * Size, 0 );
+		ObjRender_SetScaleXYZ( Charge_Obj_Color, Color_Size - a * 1/40 * Color_Size , Color_Size - a * 1/40 * Color_Size, 0 );
+	
+		yield;
+	
+	}
+	
+	Obj_Delete( Charge_Obj );
+	Obj_Delete( Charge_Obj_Color );
+	
+}	
+
+//--------------------------------------------------
+
+task T_Burst_Circle_A1( Target, Color ){
+	
+	float ScaleAdd = 0;
+	
+	//wait( Delay );
+	
+	let Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/CircleEff.png";
+	let Obj_EffCircle = Render2D_Texture_A1( Path, [ 0, 0, 128, 128 ], ObjMove_GetX( Target ), ObjMove_GetY( Target ), 1, 0.32 );
+	ObjRender_SetBlendType( Obj_EffCircle, BLEND_ADD_ARGB );
+	
+	ObjRender_SetColor( Obj_EffCircle, Color[ 0 ], Color[ 1 ], Color [2 ] );
+
+	T_FadeOut_Delete( Obj_EffCircle, 30, 255 );
+		
+	loop( 60 ){
+				
+		ObjRender_SetScaleXYZ( Obj_EffCircle, 1 + ScaleAdd, 1 + ScaleAdd, 0 );
+				
+		ScaleAdd += 0.2;				
+			
+		yield;
+				
+	}		
+	
+}
+
+task T_Burst_Circle_A2( Target, Fade_Time, Max_Scale, Color ){
+	
+	//Same as A1 but scalable
+	float ScaleAdd = 0;
+	
+	//wait( Delay );
+	
+	let Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/CircleEff.png";
+	let Obj_EffCircle = Render2D_Texture_A1( Path, [ 0, 0, 128, 128 ], ObjMove_GetX( Target ), ObjMove_GetY( Target ), 1, 0.32 );
+	ObjRender_SetBlendType( Obj_EffCircle, BLEND_ADD_ARGB );
+	
+	ObjRender_SetColor( Obj_EffCircle, Color[ 0 ], Color[ 1 ], Color [2 ] );
+
+	T_FadeOut_Delete( Obj_EffCircle, Fade_Time, 255 );
+		
+	loop( Fade_Time ){
+				
+		ObjRender_SetScaleXYZ( Obj_EffCircle, 0.1 + ScaleAdd, 0.1 + ScaleAdd, 0 );
+				
+		ScaleAdd += Max_Scale/Fade_Time;				
+			
+		yield;
+				
+	}		
+	
+}
+
+
+task T_Charge_Circle_A2( Target, Fade_In_Time, Fade_Out_Time, Initial_Scale, End_Scale, Color,Interpolation_Type ){
+	
+	float Scale = Initial_Scale;
+	float Scale_Time = Fade_In_Time + Fade_Out_Time;
+	
+	//wait( Delay );
+	
+	let Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/CircleEff.png";
+	let Obj_EffCircle = Render2D_Texture_A1( Path, [ 0, 0, 128, 128 ], ObjMove_GetX( Target ), ObjMove_GetY( Target ), 0, 0.32 );
+	ObjRender_SetBlendType( Obj_EffCircle, BLEND_ADD_ARGB );
+	
+	ObjRender_SetColor( Obj_EffCircle, Color[ 0 ], Color[ 1 ], Color [2 ] );
+
+	async{
+
+		T_FadeIn_A1( Obj_EffCircle, Fade_In_Time, 255 );
+
+		wait( Fade_In_Time );
+
+		T_FadeOut_Delete( Obj_EffCircle, Fade_Out_Time, 255 );
+
+	}
+
+		
+	ascent (i in 0..Scale_Time) {
+				
+		ObjRender_SetScaleXYZ( Obj_EffCircle, Scale, Scale, Scale );
+				
+		Scale = Interpolate_X( Initial_Scale, End_Scale, i/Scale_Time, Interpolation_Type );	
+			
+		yield;
+				
+	}		
+	
+}
+
+
+task T_ShotDown_Inverted( X, Y ){
+	
+	let Path = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/Invert.png";
+	
+	Effect( X, Y, 0.05, 60 );
+	Effect( X + 64, Y + 64, 0.05, 60 );
+	Effect( X - 64, Y + 64, 0.05, 60 );
+	Effect( X + 64, Y - 64, 0.05, 60 );
+	Effect( X - 64, Y - 64, 0.05, 60 );
+	wait( 30 );
+	Effect( X, Y, 0.1, 30 );
+	Effect( X + 64, Y + 64, 0.05, 60 );
+	Effect( X - 64, Y + 64, 0.05, 60 );
+	Effect( X + 64, Y - 64, 0.05, 60 );
+	Effect( X - 64, Y - 64, 0.05, 60 );	
+	
+	
+	task Effect( X, Y, Scale, DeleteTime ){
+		
+		float Time = 0;
+		float ScaleAdd = 0;
+		let obj = Render2D_Texture_A1( Path, [ 0, 0, 512, 512 ], X, Y, ScaleAdd, 0.79 );
+
+		Obj_SetRenderPriorityI (obj, 79 );
+
+		ObjRender_SetBlendType( obj, BLEND_INV_DESTRGB );
+		
+		loop{
+			
+			ObjRender_SetScaleXYZ( obj, ScaleAdd, ScaleAdd, ScaleAdd );
+			Time++;
+			ScaleAdd += Scale;
+
+			if( Time == DeleteTime ){
+				Obj_Delete(obj);
+				break;
+			}
+				yield;
+		}
+	}	
+}	
+
+//----------------------------------------------------------
+
+task T_Shoot_Banner( Boss_Name, Color, Size ){
+
+	let Tex_Path =  GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/Shoot_Banner.png";
+
+	int Banner = Render2D_Texture_A1( Tex_Path, [ 0, 0, 512, 128 ], GetStgFrameWidth()/2, GetStgFrameHeight()/2, 1, 0.45 );
+
+	ObjRender_SetBlendType( Banner, BLEND_ADD_ARGB );
+	ObjRender_SetColor( Banner, Color[0], Color[1], Color[2] );
+	ObjRender_SetAlpha( Banner, 155 );
+	//T_AfterImage( Banner, 1.5 );
+	//ObjRender_SetAngleZ( Banner, -45 );
+	ObjRender_SetScaleX( Banner, 1.5 );
+
+	let Text_Obj = ObjText_Create();
+
+	ObjRender_SetPosition( Text_Obj, GetStgFrameWidth/2, GetStgFrameHeight/2 - 24, 0 );
+	ObjText_SetText( Text_Obj, "Shoot!" );
+	ObjText_SetFontSize( Text_Obj, 64 );
+	ObjText_SetFontBorderType( Text_Obj, BORDER_FULL );
+	ObjText_SetFontBorderColor( Text_Obj, Color[0], Color[1], Color[2] );
+	ObjText_SetFontBorderWidth( Text_Obj, 64/10 );
+	ObjText_SetHorizontalAlignment( Text_Obj, ALIGNMENT_CENTER );
+
+	//T_Text_AfterImage( Text_Obj, 64 );
+
+	ObjText_SetFontType( Text_Obj, "Chaney Thin Normal" );	
+
+	async{
+
+		ascent( i in 0..24 ){
+	
+			float Text_X = Interpolate_Decelerate( GetStgFrameWidth + Size*1.5, GetStgFrameWidth/2, i/24 );
+
+			
+			ObjRender_SetScaleX( Text_Obj, Interpolate_Decelerate( 0.5, 1, i/24 ) );
+			//ObjRender_SetScaleY( Text_Obj, Interpolate_Decelerate( 0.5, 1, i/24 ) );
+			//ObjText_SetFontSize( Text_X, Interpolate_Decelerate( Size/2, Size, i/24 ) );
+			ObjRender_SetPosition( Text_Obj, Text_X, GetStgFrameHeight/2 - 24, 0 );
+
+			yield;
+		}
+
+		//T_AfterImage( Text_Obj, 64 );
+
+		wait( 20 );
+
+		async{
+
+			let Boss_Name_Obj = ObjText_Create();
+
+			ObjRender_SetPosition( Boss_Name_Obj, GetStgFrameWidth/2, GetStgFrameHeight/2 - 24, 0 );
+			ObjText_SetText( Boss_Name_Obj, Boss_Name );
+			ObjText_SetFontSize( Boss_Name_Obj, Size );
+			ObjText_SetFontBorderType( Boss_Name_Obj, BORDER_FULL );
+			ObjText_SetFontBorderColor( Boss_Name_Obj, Color[0], Color[1], Color[2] );
+			ObjText_SetFontBorderWidth( Boss_Name_Obj, Size/10 );
+			ObjText_SetHorizontalAlignment( Boss_Name_Obj, ALIGNMENT_CENTER );
+
+			ObjText_SetFontType( Boss_Name_Obj, "Chaney Thin Normal" );				
+			//T_Text_AfterImage( Boss_Name_Obj, Size );
+
+			ascent( i in 0..24 ){
+		
+				float Text_X = Interpolate_Decelerate( GetStgFrameWidth + Size*1.5, GetStgFrameWidth/2, i/24 );
+
+				
+				ObjRender_SetScaleX( Boss_Name_Obj, Interpolate_Decelerate( 0.5, 1, i/24 ) );
+				ObjRender_SetPosition( Boss_Name_Obj, Text_X, GetStgFrameHeight/2 - 24, 0 );
+
+				yield;
+			}			
+
+			wait( 30 );
+
+			ascent( i in 0..24 ){
+		
+				float Text_X = Interpolate_Decelerate( GetStgFrameWidth/2, 0 - Size*6.5, i/24 );
+
+				
+				ObjRender_SetScaleX( Boss_Name_Obj, Interpolate_Decelerate( 1, 3, i/24 ) );
+				ObjRender_SetScaleY( Boss_Name_Obj, Interpolate_Decelerate( 1, 0, i/24 ) );
+				ObjRender_SetPosition( Boss_Name_Obj, Text_X, GetStgFrameHeight/2 - 24, 0 );
+
+				yield;
+			}			
+
+			Obj_Delete( Boss_Name_Obj );	
+
+		}
+
+		ascent( i in 0..24 ){
+	
+			float Text_X = Interpolate_Decelerate( GetStgFrameWidth/2, 0 - Size*6.5, i/24 );
+
+			
+			ObjRender_SetScaleX( Text_Obj, Interpolate_Decelerate( 1, 3, i/24 ) );
+			ObjRender_SetScaleY( Text_Obj, Interpolate_Decelerate( 1, 0, i/24 ) );
+			//ObjText_SetFontSize( Text_X, Interpolate_Decelerate( Size/2, Size, i/24 ) );
+			ObjRender_SetPosition( Text_Obj, Text_X, GetStgFrameHeight/2 - 24, 0 );
+
+			yield;
+		}	
+
+		Obj_Delete( Text_Obj );	
+
+	}
+
+	async{
+
+		ascent( a in 0..200 ) {
+
+			ObjRender_SetAngleZ( Banner, Interpolate_Linear( -45, -16, a/200 ) );
+			yield;
+		}
+	}
+	
+	async{
+
+		ascent( a in 0..24 ) {
+			
+			ObjRender_SetScaleY( Banner, Interpolate_Decelerate( 0, 0.5, a/24 ) );
+
+			yield;
+
+		}
+
+		wait( 80 );
+
+		ascent( a in 0..24 ) {
+			
+			//ObjRender_SetScaleX( Banner, Interpolate_Smoother( 1, 1.5, a/24 ) );
+			ObjRender_SetScaleY( Banner, Interpolate_Decelerate( 0.5, 0, a/24 ) );
+
+			yield;
+
+		}		
+
+		Obj_Delete( Banner );
+	}
+
+	task T_AfterImage( Obj, Size ){
+		
+		//wait( 10 );
+
+		let Text_Effec_Obj = ObjText_Create();
+
+		ObjRender_SetPosition( Text_Effec_Obj, GetStgFrameWidth/2, GetStgFrameHeight/2 - 24, 0 );
+		ObjText_SetText( Text_Effec_Obj, ObjText_GetText( Obj ) );
+		ObjText_SetFontSize( Text_Effec_Obj, Size );
+		ObjText_SetFontBorderType( Text_Effec_Obj, BORDER_FULL );
+		ObjText_SetFontBorderColor( Text_Effec_Obj, Color[0], Color[1], Color[2] );
+		ObjText_SetFontBorderWidth( Text_Effec_Obj, Size/10 );
+		ObjText_SetHorizontalAlignment( Text_Effec_Obj, ALIGNMENT_CENTER );
+
+		//ObjRender_SetColor( Text_Effec_Obj, Color[0], Color[1], Color[2] );
+		ObjRender_SetBlendType( Text_Effec_Obj, BLEND_ADD_ARGB );
+
+		T_FadeOut_Delete( Text_Effec_Obj, 30, 255 );
+		T_GrowToScale_A1( Text_Effec_Obj, 30, 1.5  );
+
+	}
+
+}

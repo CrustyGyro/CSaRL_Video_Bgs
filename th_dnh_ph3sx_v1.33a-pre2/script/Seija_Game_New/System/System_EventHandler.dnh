@@ -1,0 +1,621 @@
+//-----------------------------------------------------------------------------
+
+	#include "./Common.dnh"	
+	#include "./Constants.dnh"
+	#include "./../Lib/Lib_Shot.dnh"	
+	#include "./../Lib/Lib_Sound.dnh"
+	#include "./../Lib/Lib_Item.dnh"
+	#include "./../Lib/Lib_Boss_Effect.dnh"
+
+//-----------------------------------------------------------------------------
+
+let Break_Tex = GetCurrentScriptDirectory() ~ "./../Resource/Textures/System/BulletDelete_Nixxiam.png";
+let Item_Tex = GetCurrentScriptDirectory() ~ "./../Resource/Textures/System/Items.png";
+let Circle_Tex = GetCurrentScriptDirectory() ~ "./../Resource/Textures/Effect/MagicCircle.png";
+float Graze_Timer = 1;
+
+//-----------------------------------------------------------------------------
+
+@Loading {
+	
+	//Pre-loads some important System and Effect textures used throughout the entire game - Seija
+	
+    LoadTexture( Break_Tex );
+	LoadTexture( Item_Tex );
+	LoadTexture( Circle_Tex );
+}
+
+
+@Initialize{
+
+	LoadItemData("script/Seija_Game_New/System/Item_Data.dnh");
+	//LoadItemData( GetCurrentScriptDirectory() ~ "Item_Data.dnh" );
+	SetDefaultBonusItemEnable( false );	
+	T_Handle_Line_A();
+	
+}
+
+@MainLoop{
+	
+	yield;
+}
+
+
+@Event{
+	
+	alternative(GetEventType())			
+	case( EV_SPAWN_ITEM_GENERIC ){
+		//For Enemies and stuff.
+		let X = GetEventArgument( 0 );
+		let Y = GetEventArgument( 1 );
+		let Type = GetEventArgument( 2 );
+		Create_Item_A1( X, Y, Type );
+	}
+    case( EV_SPAWN_ITEM_NON ) {
+	
+		let X = GetEventArgument( 0 );
+		let Y = GetEventArgument( 1 );
+		let Count = GetEventArgument( 2 );	
+        let Range = GetEventArgument( 3 );
+		
+        ascent( i in 0..Count ){
+
+			Create_Item_A1( X + rand( -Range, Range ), Y + rand( -Range, Range ), ITEM_S_SCORE );
+			yield;
+        }
+        ascent( i in 0..Count/2 ){
+
+			Create_Item_A1( X + rand( -Range, Range ), Y + rand( -Range, Range ), ITEM_S_SCORE_FULL );
+			yield;
+        }		
+			
+    }	
+    case( EV_DELETE_SHOT_TO_ITEM ) {
+        let Shot = GetEventArgument( 0 );
+		if( Obj_GetType( Shot ) == OBJ_STRAIGHT_LASER || Obj_GetType( Shot ) == OBJ_LOOSE_LASER ){ return; }
+		else{
+			
+			T_RenderScore_Shot( Shot, 1000 + GetPoint() + GetGraze(),[ 255, 255, 255 ] );
+			//let Item_Obj = CreateItemU1( "ITEM_POW", ObjMove_GetX( Shot ), ObjMove_GetY( Shot ), 1000 );
+			//Create_ShotDelete_Item( ObjMove_GetX( Shot ), ObjMove_GetY( Shot ) );
+			//Create_Item_A1( ObjMove_GetX( Shot ), ObjMove_GetY( Shot ), ITEM_S_BONUS );
+			T_BulletBreak_A1( Shot );
+		}	
+    }
+    case( EV_DELETE_SHOT_IMMEDIATE ) {
+        let Shot = GetEventArgument( 0 );
+        T_BulletBreak_A1( Shot );
+    }	
+    case( EV_BOSS_EFFECT ) {
+		//Spawns the visual effects behind the boss.
+		//This way they don't reset inbetween single scripts
+		//and only need to be called once the fight starts. - Seija
+		
+		//Boss shaders also go here. - Seija
+		
+		let Boss_Obj = GetEventArgument( 0 );
+		let Color_Aura = GetEventArgument( 1 );
+		//let Texture = GetEventArgument( 0 );
+		T_FlameAura( Boss_Obj, Color_Aura, 1 );
+		//T_Boss_Dragon_Aura( Boss_Obj );
+		//T_Boss_Flame_Wings( Boss_Obj );
+        T_Boss_Magiccircle( GetEnemyBossObjectID[0], Circle_Tex  );
+		T_WaveShader(  Boss_Obj );
+    }	
+    case( EV_CLEAR_ENEMY_SHOTS ) {
+
+		let Center_Obj = GetEventArgument( 0 );
+		let Time = GetEventArgument( 1 );
+		let Speed = GetEventArgument( 2 );
+	
+        T_Clear_Shot_Non( Center_Obj, Time, Speed );
+    }		
+    case( EV_CLEAR_ENEMIES ) {
+		
+		//TBA - Seija
+		yield;
+    }	
+	case(EV_GRAZE)
+	{
+		T_Handle_Line();
+		//TGainSpell(score);
+	}		
+
+	/*
+    case( EV_SPAWN_ITEM_SPELL ) {
+
+		let arg = GetEventArgument( 0 );
+
+		CustomItemA1( "ITEM_BOMB_PIECE", GetStgFrameWidth/2, GetStgFrameHeight/3 );
+		//PieceSpanw_Anim_A1( Piece_A, [ 55, 255, 200,] );
+		//wait( 10 );
+		//CustomItemA1( "ITEM_LIFE_PIECE", GetStgFrameWidth/2 - 64, GetStgFrameHeight/3 );
+    }		
+	*/
+	
+}
+
+
+task T_Handle_Line(){
+	
+	LINE_MODIFIER +=0.01;
+	Graze_Timer = 0;
+	
+}	
+
+
+task T_Handle_Line_A(){
+	
+	int Text_Size = 12;
+	let Text_Obj = ObjText_Create();
+
+	ObjRender_SetPosition( Text_Obj, Text_Size - Text_Size/2, GetStgFrameHeight-Text_Size*1.5, 0 );
+	ObjText_SetText( Text_Obj, "Next:" );
+	ObjText_SetFontSize( Text_Obj, Text_Size );
+	ObjText_SetFontBorderType( Text_Obj, BORDER_FULL );
+	ObjText_SetFontBorderColor( Text_Obj, 0, 0, 0 );
+	ObjText_SetFontBorderWidth( Text_Obj, Text_Size/10 );
+	//ObjText_SetHorizontalAlignment( Text_Obj, ALIGNMENT_CENTER );
+
+	//T_Text_AfterImage( Text_Obj, 64 );
+
+	ObjText_SetFontType( Text_Obj, "Chaney Thin Normal" );	
+
+
+	let Icon_Tex = GetCurrentScriptDirectory() ~ "./../Resource/Textures/System/Items.png";
+	let Hud_Line = GetCurrentScriptDirectory() ~ "./../Resource/Textures/System/Line_Debug.png";
+	let Hud_Line_Obj = Render2D_Texture_A1( Hud_Line, [ 0, 0, 512, 16 ], 256, 140, 1, 0.70 );
+	
+	let Hud_Line_Arrow = GetCurrentScriptDirectory() ~ "./../Resource/Textures/System/Line_Indicator.png";
+	let Hud_Line_Obj_Sidebar = Render2D_Texture_A1( Hud_Line_Arrow, [ 0, 0, 32, 32 ], 16, 140, 1, 0 );	
+	let Piece_Icon_Obj = Render2D_Texture_A1( Icon_Tex, [ 160, 0, 192, 32 ], 40, GetStgFrameHeight - Text_Size, 1, 0.50 );
+
+	/*
+	async{
+
+		float Frame = 0;
+
+		while( !Obj_IsDeleted( Piece_Icon_Obj )){
+
+			ObjRender_SetAngleZ( Piece_Icon_Obj, 0 + 16 * sin( Frame ));
+
+			Frame++;
+
+			yield;
+
+		}
+
+	}
+	*/
+
+	//float Graze_Timer = 1;
+	float Graze_Timer_Modifier = 0;
+	float Piece_Timer = 100;
+	float Y = 140;
+
+	int Piece_Handler = 1;
+	// 1 for a spell piece, -1 for a life piece...
+	
+	while(true){
+		
+		if( Y <= 140 ){ Y = 140; }
+		if( Y >= Get_MaxY ){
+
+			Y = 140; 
+			//NotifyEventAll( EV_SPAWN_ITEM_NON, Get_CenterX, Get_CenterY/1.5, 10, 32 ); 
+			Graze_Timer = 8; LINE_MODIFIER = 0; 
+			
+			if( Piece_Handler == 1 ){ 
+			
+				ObjSprite2D_SetSourceRect( Piece_Icon_Obj, 128, 0, 160, 32 );
+				//ObjRender_SetColor( Hud_Line_Obj_Sidebar, 255, 100, 155 );
+				Create_Item_A1( GetPlayerX(), Get_CenterY/1.5, ITEM_S_SPELL_PIECE ); 
+
+			}
+			else{
+
+				ObjSprite2D_SetSourceRect( Piece_Icon_Obj, 160, 0, 192, 32 );
+				//ObjRender_SetColor( Hud_Line_Obj_Sidebar, 100, 255, 155 );
+				Create_Item_A1( GetPlayerX(), Get_CenterY/1.5, ITEM_S_LIFE_PIECE );
+
+			}
+
+			Piece_Handler = -Piece_Handler;
+			
+		}
+
+		Y = min( Y + LINE_MODIFIER/LINE_MOD_STAGE - Graze_Timer/5, Get_MaxY  );
+	
+		ObjRender_SetY( Hud_Line_Obj, max( Y, 140 ) ); 		
+		ObjRender_SetY( Hud_Line_Obj_Sidebar, max( Y, 140 ) + 16 );
+		
+		SetCommonData("POC_LINE", Y );
+		
+		Graze_Timer+=0.01;
+		//Graze_Timer--;
+		
+		//if( Graze_Timer >= LINE_MODIFIER*10 ){ Graze_Timer = 0; }
+	//	Graze_Timer += 0.5 + Graze_Timer_Modifier;
+		yield;
+	}	
+	
+	
+}	
+
+//-----------------------------------------------------------------------------
+
+	// -- Shot Clears --
+
+task T_Clear_Shot_Non( Center_Obj, Time, Speed ){
+	
+	let Radius = 0;
+	//let X_Pos = ObjMove_GetX( Center_Obj ); 
+	//let Y_Pos = ObjMove_GetY( Center_Obj );
+	
+	//if( Obj_IsDeleted( Center_Obj ) ){ X_Pos = Get_CenterX; Y_Pos = Get_CenterY; }
+	
+	loop( Time ){
+	
+		let Shot_Array = GetShotIdInCircleA2( Get_CenterX, Get_CenterY, 1000, TARGET_ENEMY );
+		
+		ascent( a in 0..length( Shot_Array )){
+			
+			if( !Obj_IsDeleted( Center_Obj ) ) { 
+				if( !Obj_IsDeleted( Shot_Array[ a ]) && GetObjectDistance( Center_Obj, Shot_Array[ a ] ) < Radius ){
+					
+					ObjShot_ToItem( Shot_Array[ a ] );
+				
+				
+				}
+			}
+			else if( !Obj_IsDeleted( Shot_Array[ a ]) && GetObjectDistance( Get_CenterX, Shot_Array[ a ] ) < Radius ){
+				
+				ObjShot_ToItem( Shot_Array[ a ] );
+
+			}			
+			//yield;
+			
+		}	
+	
+		Radius += Speed;
+		yield;
+	}
+	
+	DeleteShotAll( TYPE_ALL, TYPE_ITEM );
+}	
+/*
+task T_Clear_Shot_Non( Center_Obj, Time, Speed ){
+	
+	let Radius = 0;
+	//let X_Pos = ObjMove_GetX( Center_Obj ); 
+	//let Y_Pos = ObjMove_GetY( Center_Obj );
+	
+	//if( Obj_IsDeleted( Center_Obj ) ){ X_Pos = Get_CenterX; Y_Pos = Get_CenterY; }
+	
+	loop( Time ){
+	
+		let Shot_Array = GetShotIdInCircleA2( Get_CenterX, Get_CenterY, 1000, TARGET_ENEMY );
+		
+		ascent( a in 0..length( Shot_Array )){
+			
+			if( !Obj_IsDeleted( Shot_Array[ a ]) && GetObjectDistance( Center_Obj, Shot_Array[ a ] ) < Radius ){
+				
+				ObjShot_ToItem( Shot_Array[ a ] );
+			
+			
+			}
+			//yield;
+			
+		}	
+	
+		Radius += Speed;
+		yield;
+	}
+}	
+*/
+
+task T_BulletBreak_A1( shot ){
+	
+	T_PlaySE( SE_BULLET_DELETE, 30 );
+	ObjShot_SetIntersectionEnable( shot, false );
+	
+	let Obj = ObjPrim_Create(OBJ_SPRITE_2D);
+	let Sprite = ObjShot_GetImageID( shot );
+	let Color = GetShotDataInfoA1( Sprite, TARGET_ENEMY, INFO_DELAY_COLOR );
+	let Size = 16 + GetShotDataInfoA1( Sprite, TARGET_ENEMY, INFO_COLLISION );
+	
+	let X = ObjMove_GetX( shot );
+	let Y = ObjMove_GetY( shot );
+	let Add = 0;
+	
+	//Create_Item_A1( ObjMove_GetX( shot ), ObjMove_GetY( shot ), ITEM_S_BONUS );
+	
+	ObjPrim_SetTexture( Obj, Break_Tex );
+	Obj_SetRenderPriority( Obj, 0.31 );
+	ObjSprite2D_SetDestRect( Obj, -Size, -Size, Size, Size );
+	ObjRender_SetAngleZ( Obj, prand( 0, 360 ) );
+	ObjRender_SetColor( Obj, Color[0], Color[1], Color[2] );
+	ObjRender_SetPosition( Obj, X, Y, 0 );
+	ObjRender_SetBlendType( Obj, BLEND_ADD_ARGB );
+
+	ascent(i in 0..16 ){
+		
+		ObjSprite2D_SetSourceRect( Obj, 0 + Add, 0, 128 + Add, 128 );
+		Add += 128;
+		wait( 2 );
+	}
+	
+	Obj_Delete( Obj );
+	//Obj_Delete( shot );
+
+}
+
+task T_BulletBreak_A2( shot ){
+	
+	T_PlaySE( SE_BULLET_DELETE, 30 );
+	ObjShot_SetIntersectionEnable( shot, false );
+	
+	let Obj = ObjPrim_Create(OBJ_SPRITE_2D);
+	let Sprite = ObjShot_GetImageID( shot );
+	let Length = ObjLaser_GetLength( shot )/3;
+	let Length_Max = ObjLaser_GetLength( shot );
+	let Color = GetShotDataInfoA1( Sprite, TARGET_ENEMY, INFO_DELAY_COLOR );
+	let Size = 16 + GetShotDataInfoA1( Sprite, TARGET_ENEMY, INFO_COLLISION );
+	float Laser_Angle = ObjStLaser_GetAngle( Obj );
+	
+	let X = ObjMove_GetX( shot );
+	let Y = ObjMove_GetY( shot );
+	let Add = 0;
+	
+	//Create_Item_A1( ObjMove_GetX( shot ), ObjMove_GetY( shot ), ITEM_S_BONUS );
+	
+	ascent( a in 0..Length ){
+		
+		float Shot_X = X + a * Length_Max/Length * cos( Laser_Angle );
+		float Shot_Y = Y + a * Length_Max/Length * sin( Laser_Angle );			
+		
+		T_Effect( Shot_X, Shot_Y );
+		
+		//yield;
+	}	
+	Obj_Delete( Obj );
+	
+	task T_Effect( X, Y ){	
+		
+		ObjPrim_SetTexture( Obj, Break_Tex );
+		Obj_SetRenderPriority( Obj, 0.31 );
+		ObjSprite2D_SetDestRect( Obj, -Size, -Size, Size, Size );
+		ObjRender_SetAngleZ( Obj, prand( 0, 360 ) );
+		ObjRender_SetColor( Obj, Color[0], Color[1], Color[2] );
+		ObjRender_SetPosition( Obj, X, Y, 0 );
+		ObjRender_SetBlendType( Obj, BLEND_ADD_ARGB );
+
+		ascent(i in 0..16 ){
+			
+			ObjSprite2D_SetSourceRect( Obj, 0 + Add, 0, 128 + Add, 128 );
+			Add += 128;
+			wait( 8 );
+		}	
+		
+	}	
+	Obj_Delete( shot );
+
+
+}
+//-----------------------------------------------------------------------------
+/*
+function Create_Item_A1( X, Y, Type ){
+	
+	let Item_Obj = Render_Item_A1( X, Y, Type );
+	T_Item_Handler_A1( Item_Obj, Type, 1000 );
+	
+	
+}	
+
+function Collect_Item_Check( Obj, Type ){
+	
+	
+	int Point_Value = 0;
+	
+	alternative(Type)
+	case( ITEM_S_SCORE ){
+
+		T_PlaySE( SE_ITEM, 30 );
+		if( GetPlayerY() <= 140 ){
+			
+			Point_Value = 1000 + GetPoint() + GetGraze();
+			
+			AddScore(Point_Value );
+			RenderScore( Obj, Point_Value );
+			
+		}
+		else{
+			RenderScore( Obj, 100 );
+			AddScore( 100 );
+		}	
+		
+	}
+	
+}
+
+function Render_Item_A1( X, Y, Type ){
+	
+	let Item_Obj;
+	
+	
+	alternative(Type)
+	case( ITEM_S_SCORE ){
+
+		Item_Obj = Render2D_Texture_A1( Item_Tex, [ 16, 0, 32, 16 ], X, Y, 1, 25 );
+		Obj_SetRenderPriorityI( Item_Obj, GetItemRenderPriorityI() );
+		
+	}	
+	
+
+
+	return( Item_Obj );
+}
+
+function T_CheckRange(Obj){
+	
+	// Checks if the item is in collecting range of the player ( default is 20 ).
+	return ( GetPlayerState() == STATE_NORMAL && ( GetDistance( ObjRender_GetX( Obj ), ObjRender_GetY( Obj ), GetPlayerX(), GetPlayerY() ) < 20 ));
+	
+}
+
+task T_Item_Handler_A1( Obj, Type, Value ){
+	
+	bool MoveToPL = false;
+	float ObjX = ObjRender_GetX( Obj );
+	float ObjY = ObjRender_GetY( Obj );	
+	int VSpeed = -6;
+	
+	T_Spawn_Anim( Obj );
+	loop( 25 ){
+		
+		ObjY += VSpeed;
+		ObjRender_SetY( Obj, ObjY);
+		VSpeed = min( 1.25, VSpeed + 0.08 );			
+		yield;
+	}	
+	
+	
+	while( !Obj_IsDeleted( Obj ) && ObjY < GetStgFrameHeight + 32 && ObjX < GetStgFrameWidth + 32 && ObjX > -32){	
+		
+		// Moving Down.
+		ObjRender_SetY( Obj, ObjY );
+		ObjY += VSpeed;
+		VSpeed = 1;
+		
+		// Cancel Collection Movement if player Dies.
+		if (GetPlayerState() != STATE_NORMAL) {
+			MoveToPL = false;
+		}		
+		// Point of Collection Line.
+		if (GetPlayerState() == STATE_NORMAL && GetPlayerY() <= 140 ) {
+			MoveToPL = true;
+		}
+		// Move to Player if within range.
+		if ( GetDistance( ObjX, ObjY, GetPlayerX(), GetPlayerY() ) < 64 ){
+			MoveToPL = true;
+		}	
+		// Moving to Player
+		if ( MoveToPL == true ) {
+			let Angle = atan2( GetPlayerY() - ObjY, GetPlayerX() - ObjX );
+			ObjX += 8*cos(Angle); 
+			ObjY += 8*sin(Angle);
+			ObjRender_SetPosition( Obj, ObjX, ObjY, 0);
+		} 	
+		// Collecting Task
+		if ( T_CheckRange( Obj )){
+			
+			Collect_Item_Check( Obj, Type );
+			Obj_Delete( Obj );
+			break;
+			
+		}		
+		yield;
+	}
+	Obj_Delete( Obj );
+	
+	task T_Spawn_Anim( Obj ){
+
+		loop(2){
+			let Spin = round( prand( 16, 18 ) );
+			ascent( a in 1..Spin+1 ){
+				if( !Obj_IsDeleted( Obj ) ){
+					ObjRender_SetAngleZ( Obj, a*360/Spin );
+				}
+				yield;
+			}
+		}		
+
+	}		
+	
+}
+
+//-----------------------------------------------------------------------------
+
+
+task RenderScore( Target, Value ){
+	
+	let Score = ObjText_Create;
+	
+	ObjRender_SetX( Score, GetPlayerX() -8 );
+	ObjRender_SetY( Score, GetPlayerY() );
+	Obj_SetRenderPriority( Score, 0.8 );
+	
+	
+	ObjText_SetFontBorderType( Score, BORDER_SHADOW );
+	ObjText_SetFontBorderWidth( Score, 1.2 );
+	ObjText_SetFontColorTop( Score, 255, 255 ,255 );
+	ObjText_SetFontSize( Score, 12 );
+	ObjText_SetMaxWidth( Score, 400 );
+	ObjText_SetFontBorderColor( Score, 0, 0, 0 );
+	ObjText_SetFontType( Score, "Chaney Thin Normal");
+	
+	if( GetPlayerY <= 140 ){
+		
+		ObjText_SetFontColorTop( Score, 255, 255, 50 );
+		ObjText_SetFontColorBottom( Score, 255, 255, 50 );
+		
+	}	
+	
+	ObjText_SetText( Score, IntToString( Value) );
+	
+	ascent( a in 0..64 ){
+			
+		ObjRender_SetY( Score,  ObjRender_GetY( Score ) -1 + a/64 );
+		ObjRender_SetAlpha( Score, ( a / 64 ) * 255 );
+		yield;
+			
+	}	
+	
+	descent( a in 0..10 ){
+			
+		ObjRender_SetAlpha( Score, ( a / 10) * 255 );
+		yield;
+			
+	}	
+	
+	Obj_Delete( Score );
+	
+}	
+
+//-----------------------------------------------------------------------------
+
+task T_BulletBreak_A1( shot ){
+	
+	
+	ObjShot_SetIntersectionEnable( shot, false );
+	
+	let Obj = ObjPrim_Create(OBJ_SPRITE_2D);
+	let Sprite = ObjShot_GetImageID( shot );
+	let Color = GetShotDataInfoA1( Sprite, TARGET_ENEMY, INFO_DELAY_COLOR );
+	let Size = 16 + GetShotDataInfoA1( Sprite, TARGET_ENEMY, INFO_COLLISION );
+	
+	float X = ObjMove_GetX( shot );
+	float Y = ObjMove_GetY( shot );
+	float Add = 0;
+	
+	ObjPrim_SetTexture( Obj, Break_Tex );
+	Obj_SetRenderPriority( Obj, 0.31 );
+	ObjSprite2D_SetDestRect( Obj, -Size, -Size, Size, Size );
+	ObjRender_SetAngleZ( Obj, prand( 0, 360 ) );
+	ObjRender_SetColor( Obj, Color[0], Color[1], Color[2] );
+	ObjRender_SetPosition( Obj, X, Y, 0 );
+	ObjRender_SetBlendType( Obj, BLEND_ADD_ARGB );
+
+	ascent(i in 0..8 ){
+		
+		ObjSprite2D_SetSourceRect( Obj, 0 + Add, 0, 64 + Add, 64 );
+		Add += 64;
+		wait( 3 );
+	}
+	
+	Obj_Delete( Obj );
+
+}
+
+*/
+//-----------------------------------------------------------------------------

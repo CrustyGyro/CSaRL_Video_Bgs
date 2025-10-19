@@ -1,0 +1,468 @@
+#TouhouDanmakufu[Stage]
+#Title["CSARL_STAGE_4A"]
+#Text["Peenid"]
+#ScriptVersion[3]
+#Player[ "./../../Player/PL_Reimu.dnh" ]
+#System["./../../System/System_Main_Hud.dnh"]
+
+//--------------------------------------------------------------------------------------------------------------------------------------------
+
+#include "./../../System/Common.dnh"
+#include "./../../System/Constants.dnh"
+#include "./../../Lib/Lib_StageBg.dnh"
+
+//--------------------------------------------------------------------------------------------------------------------------------------------
+
+// Stage Textures
+
+//TODO: Make a proper loading scene for these textures and the meshes.
+
+//let Tex_Water_00 = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/01/Water_00.png";
+let Tex_MOON = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/STG_04/Carl_Moon.png";
+let Tex_Mist = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/STG_04/FX_CloudAlpha01-export.png";
+let Tex_Clifface_A = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/STG_04/Carl_Rocky.png";
+let Tex_Waterfall = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/STG_04/Carl_Water_A.png";
+let Tex_Overlay = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/STG_04/Carl_Overlay_A.png";
+let Tex_Clifface_B = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/STG_04/Carl_Cliff_A.png";
+
+let Tex_Clifface_C = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/STG_04/Carl_Cliff_B.png";
+let Tex_Overlay_B = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/STG_04/Carl_Gradient_A.png";
+let Tex_Overlay_C = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/STG_04/Carl_Gradient_B.png";
+let Tex_Rainbow = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/STG_04/Carl_Rainbow_A.png";
+let Tex_Yellow_Stream = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Stage/STG_04/FW_Wall_Yellow_Stream.png";
+let Tex_Ground_00 = GetCurrentScriptDirectory() ~ "./../../Resource/Mesh/Ground_00.png";
+
+let Tex_Particle_00 = GetCurrentScriptDirectory() ~ "./../../Resource/Textures/Effect/Particle_01.png";
+
+//--------------------------------------------------------------------------------------------------------------------------------------------
+
+//STAGE_PHASE = 0;
+
+float Camera_Speed = 0.5; // Camera does not actually move besides the little bobbing animation, this is for scaling the texture scrolling.
+
+float Cam_X = 0;
+float Cam_Y = 0;
+float Cam_Z = 0;
+
+int Phase_Text = ObjText_Create();
+let Text = "Null";
+
+//--------------------------------------------------------------------------------------------------------------------------------------------
+
+@Loading {
+	
+    LoadTexture( Tex_Clifface_A );
+	LoadTexture( Tex_Waterfall );
+	LoadTexture( Tex_Overlay );
+	LoadTexture( Tex_Clifface_B );
+	LoadTexture( Tex_Clifface_C );
+	LoadTexture( Tex_Overlay_B );
+	LoadTexture( Tex_Rainbow );
+
+}
+
+
+@Initialize{
+    
+	SetCommonData( "BG_Phase", 1 );
+
+	T_Phase_Text_Manager();
+	T_Phase_Text_Notif();
+	T_BuildStage();
+	T_BG_Phase();
+	
+}
+
+@MainLoop{ 
+
+    if( GetKeyState( KEY_N ) == KEY_PUSH ){ SetCommonData( "BG_Phase", GetCommonData( "BG_Phase", 0 ) + 1); }
+	yield; 
+}
+
+@Finalize{ }
+
+task T_BG_Phase(){
+	
+	int Current_BG_Phase = 0;
+	
+	while( true ){
+		
+		while( GetCommonData( "BG_Phase", 0 ) == Current_BG_Phase ){ yield; } 
+		Current_BG_Phase = GetCommonData( "BG_Phase", 0);
+		
+		alternative( Current_BG_Phase )
+		case( 1 ){
+			//Initial Stage Reveal - Morning
+
+			Text = "Initial Reveal -> Evening Phase ( Transitioning )";
+			T_Cam_Phase_1();
+			T_Fog_Phase_1();
+		}
+		case( 2 ){
+			//Rolling Into Night
+
+			Text = "Evening Phase -> Night Phase ( Transitioning )";
+			T_Cam_Phase_2();
+			T_Fog_Phase_2();
+		}	
+		yield;	
+	}
+	
+}
+
+task T_Phase_Text_Manager{
+
+	//Placeholder as well - Seija
+	
+	//let objText = ObjText_Create();
+	//let fps = GetCurrentFps();
+	//let text;
+
+	ObjText_SetFontSize(Phase_Text, 32);
+	ObjText_SetFontBold(Phase_Text, true);
+	//ObjText_SetFontType(objText, "Mochiy Pop One");
+	
+	ObjText_SetFontColorTop(Phase_Text, 255, 255, 0);
+	ObjText_SetFontColorBottom(Phase_Text, 255, 255, 0);
+	ObjText_SetHorizontalAlignment( Phase_Text, ALIGNMENT_LEFT );
+	
+	ObjText_SetFontBorderType(Phase_Text, BORDER_FULL);
+	ObjText_SetFontBorderColor(Phase_Text,0, 0, 0);
+	ObjText_SetFontBorderWidth(Phase_Text, 8);
+	
+	Obj_SetRenderPriority(Phase_Text, 55);
+	ObjText_SetMaxWidth(Phase_Text, GetScreenWidth());
+	ObjRender_SetX(Phase_Text, 0);
+	ObjRender_SetY(Phase_Text,  GetScreenHeight()*0.97);
+
+	ObjText_SetText(Phase_Text, Text);
+
+	while(true){
+		
+		ObjText_SetText( Phase_Text, Text);
+		yield;
+	}	
+
+}
+
+task T_Phase_Text_Notif{
+
+	int PressN_Text = ObjText_Create();
+
+	ObjText_SetFontSize(PressN_Text, 32);
+	ObjText_SetFontBold(PressN_Text, true);
+	//ObjText_SetFontType(objText, "Mochiy Pop One");
+	
+	ObjText_SetFontColorTop(PressN_Text, 255, 255, 0);
+	ObjText_SetFontColorBottom(PressN_Text, 255, 255, 0);
+	ObjText_SetHorizontalAlignment( PressN_Text, ALIGNMENT_CENTER );
+	
+	ObjText_SetFontBorderType(PressN_Text, BORDER_FULL);
+	ObjText_SetFontBorderColor(PressN_Text,0, 0, 0);
+	ObjText_SetFontBorderWidth(PressN_Text, 8);
+	
+	Obj_SetRenderPriority(PressN_Text, 55);
+	ObjText_SetMaxWidth(PressN_Text, GetScreenWidth());
+	ObjRender_SetX(PressN_Text, 0);
+	ObjRender_SetY(PressN_Text,  4 );
+
+	ObjText_SetText(PressN_Text, "Press N To Advance to the next background transition");
+
+
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------
+
+task T_BuildStage{
+
+	//Text = "Building Stage...";
+
+	int Render_P = 20;
+	
+	int Cliff_Tiling = 1;
+	float Cliff_Speed = 1.5;
+	
+	int Wall_A = Render_3D_Sprite_A1( Tex_Clifface_A, [ 0, 0, 512, 512*2 ], 0, -256, 400, Render_P, [ 1, 1, 1 ] );
+	T_Scroll_A1( Wall_A, [ 0, 0, 512*Cliff_Tiling , 512*2 ], Cliff_Speed, Camera_Speed );
+	
+	int Wall_B = Render_3D_Sprite_A1( Tex_Clifface_B, [ 0, 0, 512*2, 512*2 ], 256, -256, 380, Render_P, [ 1, 1, 1 ] );
+	T_Scroll_A1( Wall_B, [ 0, 0, 512*2 , 512*2 ], Cliff_Speed +0.5, 1 );		
+	
+	int Water_A = Render_3D_Sprite_A1( Tex_Waterfall, [ 0, 0, 512*2, 512*2 ], 0, -256, 300, Render_P, [ 1, 1, 1 ] );
+	T_Scroll_A1( Water_A, [ 0, 0, 512*2 , 512*2 ], 15, 1 );		
+	
+	int Water_B = Render_3D_Sprite_A1( Tex_Waterfall, [ 0, 0, 512*2, 512*2 ], 0, -256, 300, Render_P, [ -1, -1, 1 ] );
+	T_Scroll_A1( Water_B, [ 0, 0, 512*2 , 512*2 ], -25, 1 );	
+	
+	ObjRender_SetAlpha( Water_A, 170 );
+	ObjRender_SetAlpha( Water_B, 80 );
+	
+	//ObjRender_SetAngleZ();
+
+	ObjRender_SetBlendType( Water_A, BLEND_ADD_ARGB );
+	ObjRender_SetBlendType( Water_B, BLEND_ADD_ARGB );	
+	//ObjRender_SetColor( Water_A, 255, 0, 255 );
+	
+	
+	int Overlay_A = Render_3D_Sprite_A1( Tex_Overlay, [ 0, 0, 512*2, 512*2 ], 0, -256, 300, Render_P, [ 1, 1, 1 ] );
+	//T_Scroll_A1( Water_A, [ 0, 0, 512*2 , 512*2 ], 5, Camera_Speed );		
+	
+	int Wall_C = Render_3D_Sprite_A1( Tex_Clifface_C, [ 0, 0, 512*2, 512*2 ], 256, -256, 360, Render_P, [ 1, 1, 1 ] );
+	T_Scroll_A1( Wall_C, [ 0, 0, 512*2 , 512*2 ], Cliff_Speed + 1.5, 1 );	
+	
+	
+	int Overlay_B = Render_3D_Sprite_A1( Tex_Overlay_B, [ 0, 0, 512*2, 512*2 ], 0, -400, 300, Render_P, [ 1, 1, 1 ] );
+	int Overlay_C = Render_3D_Sprite_A1( Tex_Overlay_C, [ 0, 0, 512*2, 512*2 ], 0, 256, 300, Render_P, [ 1, 1, 1 ] );
+	int Rainbow = Render_3D_Sprite_A1( Tex_Rainbow, [ 0, 0, 512, 512 ], 0, -128, 300, Render_P, [ 1, 1, 1 ] );
+	
+	//ObjRender_SetBlendType( Rainbow, BLEND_ADD_ARGB );
+	//ObjRender_SetZ( Overlay_B, 90 );
+	//T_Scroll_A1( Water_A, [ 0, 0, 512*2 , 512*2 ], 5, Camera_Speed );		
+	//ObjRender_SetBlendType( Overlay_C, BLEND_ADD_ARGB );
+		
+
+
+	//T_Scroll_A1( Cliff_B, [ 0, 0, 512*Cliff_Tiling, 512*Cliff_Tiling ], Cliff_Speed, Camera_Speed );
+	
+	yield;
+	
+	
+	while( GetCommonData( "BG_Phase", 0 ) < 2 ){ 
+	
+
+		//T_Mist( 128, rand( -100, 32 ), rand( 48, 128 ), 24, BLEND_SUBTRACT );
+		T_Particles;
+		
+		wait( 20 );
+		yield; 
+	}
+
+
+	T_FadeOut_Delete( Rainbow, 200, 255 );
+	//int Moon_A = Render_3D_Sprite_A1( Tex_MOON, [ 0, 0, 512, 512 ], 0, 64, 300, Render_P, [ 0.2, -0.2, 0.2 ] );
+	//ObjRender_SetBlendType( Moon_A, BLEND_ADD_ARGB );
+	//ObjRender_SetAlpha( Moon_A, 40 );
+	//int Overlay_D = Render_3D_Sprite_A1( Tex_Overlay_C, [ 0, 0, 512*2, 512*2 ], 0, 256, 300, Render_P, [ 1, 1, 1 ] );
+
+
+
+	while( GetCommonData( "BG_Phase", 0 ) < 99 ){ 
+	
+
+		//T_Mist( 128, rand( -100, 32 ), rand( 48, 128 ), 24, BLEND_SUBTRACT );
+		T_Particles;
+		
+		wait( 20 );
+		yield; 
+	}
+	
+	//Obj_Delete( Water_A );
+	//Obj_Delete( Water_B );
+
+	//SetCommonData( "BG_Phase", 1 );
+
+	//----------------------------------------------------------------------------------------------------
+	
+	//----------------------------------------------------------------------------------------------------
+	
+	task T_Particles{
+		
+		let Particle_Obj = ObjPrim_Create( OBJ_SPRITE_3D );
+		ObjPrim_SetTexture( Particle_Obj, Tex_Mist );
+		ObjSprite3D_SetSourceDestRect( Particle_Obj, 0, 0, 512, 512 );
+		ObjRender_SetBlendType( Particle_Obj, BLEND_ADD_ARGB );
+		
+		Obj_SetRenderPriorityI( Particle_Obj, 24);
+		ObjRender_SetAngleZ( Particle_Obj, 180 );
+		
+		ObjRender_SetX( Particle_Obj, prand( -64, 64 ) );	
+		ObjRender_SetY( Particle_Obj, prand( -512, -400 ) );
+		ObjRender_SetZ( Particle_Obj, prand( -32, 200 ) );
+		
+		//let Angle_X = rand( 0,360 );
+		//let Angle_Y = rand( 0,360 );
+		let Angle_Z = prand( 0,360 );
+		let Scale_RNG = prand( 0.1, 2 );
+		
+		T_ManageParticle();
+
+		ObjRender_SetColor( Particle_Obj, 0, 0, 255 );
+		ObjRender_SetScaleXYZ( Particle_Obj, Scale_RNG, Scale_RNG, Scale_RNG );
+		ObjSprite3D_SetBillboard( Particle_Obj, true );	
+
+		//ObjRender_SetScale( Particle_Obj, rand( 0.5, 1.5 ) );
+		
+		while( !Obj_IsDeleted( Particle_Obj )){
+			
+			ObjRender_SetY( Particle_Obj, ObjRender_GetY( Particle_Obj ) + 0.3 );
+			ObjRender_SetAngleZ( Particle_Obj, Angle_Z );
+			//ObjRender_SetScaleXYZ( Particle_Obj, Scale_RNG - 1/200, Scale_RNG - 1/200 , Scale_RNG - 1/200  );
+			
+			//Angle_X += 0.8;
+			//Angle_Y += 0.8;
+			Angle_Z += 1;
+		
+			yield;
+		
+		}
+		
+		task T_ManageParticle(){
+			
+			T_FadeIn_A1( Particle_Obj, 160, 255 );
+			
+			wait( 200 );
+			
+			T_FadeOut_Delete( Particle_Obj, prand( 100, 300 ), 255 );
+			
+		}	
+		
+		//Obj_Delete( Particle_Obj );
+		
+	}	
+		
+	//----------------------------------------------------------------------------------------------------
+	
+}
+
+//----------------------------------------------------------------------
+
+task T_Fog_Phase_1{
+	
+	float Reveal_Time = 200;
+	
+	// ---- Phase 0; ----
+	// Transition from BG phase 0 to Phase 1.
+	
+	let Fog_Color_Initial = [ 10, 0, 10 ];
+	let Fog_Color_Reveal =[ 155, 0, 155 ];
+	
+	let Fog_Range_Inital = [ 1, 200 ];
+	let Fog_Range_Reveal = [ 700, 1000 ];	
+	
+	float Current_BG_Phase = 0;
+	
+	// --------------------
+	
+	SetFogParam( Fog_Range_Inital[0], Fog_Range_Inital[1], Fog_Color_Initial[0], Fog_Color_Initial[1], Fog_Color_Initial[2] );
+	
+	ascent( time in 0..Reveal_Time ){
+		
+		float[] Color = Interpolate_Smoother( Fog_Color_Initial, Fog_Color_Reveal, time/Reveal_Time );
+		float[] Range = Interpolate_Smoother( Fog_Range_Inital, Fog_Range_Reveal, time/Reveal_Time );		
+		
+		
+		SetFogParam( Range[0], Range[1], Color[0], Color[1], Color[2] );
+		
+		yield;
+		
+	}	
+	
+	Text = "Evening Phase";
+//	wait( 200 );
+//	SetCommonData( "BG_Phase", 2 );	
+	//SetCommonData( "BG_Phase", 2 );
+	
+}	
+
+
+task T_Fog_Phase_2{
+	
+	float Reveal_Time = 300; //500;
+	
+	// ---- Phase 0; ----
+	// Transition from BG phase 0 to Phase 1.
+	
+	let Fog_Color_Initial = [ 155, 0, 155 ];
+	let Fog_Color_Reveal =[ 0, 0, 32 ];
+	
+	let Fog_Range_Inital = [  700, 1000  ];
+	let Fog_Range_Reveal = [ 500, 800 ];	
+	
+	float Current_BG_Phase = 0;
+	
+	// --------------------
+	
+	SetFogParam( Fog_Range_Inital[0], Fog_Range_Inital[1], Fog_Color_Initial[0], Fog_Color_Initial[1], Fog_Color_Initial[2] );
+	
+	ascent( time in 0..Reveal_Time ){
+		
+		float[] Color = Interpolate_Smoother( Fog_Color_Initial, Fog_Color_Reveal, time/Reveal_Time );
+		float[] Range = Interpolate_Smoother( Fog_Range_Inital, Fog_Range_Reveal, time/Reveal_Time );		
+		
+		
+		SetFogParam( Range[0], Range[1], Color[0], Color[1], Color[2] );
+		
+		yield;
+		
+	}	
+	
+	Text = "Night Phase";
+//	wait( 200 );
+//	SetCommonData( "BG_Phase", 2 );	
+	//SetCommonData( "BG_Phase", 2 );
+	
+}	
+
+//----------------------------------------------------------------------
+
+task T_Cam_Phase_1{
+	
+	Cam_X = 0;
+	Cam_Y = 0;
+	Cam_Z = -280;	
+	
+	SetCameraPerspectiveClip( -1, 1000 );
+	SetCameraPosEye( Cam_X, Cam_Y, Cam_Z );
+	SetCameraAzimuthAngle( -90 );
+	SetCameraElevationAngle( 10 );
+	SetCameraRadius( 32 );
+	
+	float Cam_Roll = 0;
+		
+	loop{
+		
+		//float Cam_Roll = 0;
+		
+		//SetCameraRoll( Cam_Roll );
+		
+		Cam_Roll += 0.05;
+		yield;
+	}	
+		
+	yield;
+	
+}
+
+task T_Cam_Phase_2{
+	
+	Cam_X = 0;
+	Cam_Y = 0;
+	Cam_Z = -280;	
+	
+	SetCameraPerspectiveClip( -1, 1000 );
+	SetCameraPosEye( Cam_X, Cam_Y, Cam_Z );
+	SetCameraAzimuthAngle( -90 );
+	SetCameraElevationAngle( 10 );
+	SetCameraRadius( 32 );
+	
+	float Cam_Roll = 0;
+
+		
+	ascent( time in 0..500 ){
+		
+		//float[] Color = Interpolate_Smoother( Fog_Color_Initial, Fog_Color_Reveal, time/Reveal_Time );
+		float Angle = Interpolate_Smoother( 10, 5, time/500 );		
+		
+		
+		SetCameraElevationAngle( Angle );
+		
+		yield;
+		
+	}	
+			
+		
+	yield;
+	
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------
