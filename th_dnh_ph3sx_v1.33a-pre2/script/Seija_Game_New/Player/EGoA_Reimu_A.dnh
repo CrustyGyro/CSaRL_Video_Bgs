@@ -24,7 +24,7 @@ int Shot_Count_Fam_B = 0;
 	
 	ObjPlayer_AddIntersectionCircleA1( GetPlayerObjectID(), 0, 0, 4, 26 );
 
-	T_Render_Reimu( PL_Tex_Reimu );
+	//T_Render_Reimu( PL_Tex_Reimu );
 
 	LoadPlayerShotData( GetCurrentScriptDirectory() ~ "ShotData_Reimu.dnh" );
 	Init_Main();
@@ -32,7 +32,7 @@ int Shot_Count_Fam_B = 0;
 	
 	ObjRender_SetTextureFilter( GetPlayerObjectID(), FILTER_NONE, FILTER_NONE, FILTER_NONE );
 	
-	Create_Familiar_A();
+	//Create_Familiar_A();
 	/*
 	ascent( i in 0..4 ){
 		
@@ -47,7 +47,7 @@ int Shot_Count_Fam_B = 0;
 	
 	Main_Loop();
 	
-	Player_Shoot_A();
+	//Player_Shoot_A();
 	yield;
 	
 }

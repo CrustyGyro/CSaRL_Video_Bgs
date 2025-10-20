@@ -24,7 +24,7 @@ int Shot_Count_Fam = 0;
 	
 	ObjPlayer_AddIntersectionCircleA1( GetPlayerObjectID(), 0, 0, 2, 26 );
 
-	T_Render_Reimu( PL_Tex_Reimu );
+	//T_Render_Reimu( PL_Tex_Reimu );
 
 	LoadPlayerShotData( GetCurrentScriptDirectory() ~ "ShotData_Reimu.dnh" );
 	Init_Main();
@@ -32,7 +32,7 @@ int Shot_Count_Fam = 0;
 	
 	ObjRender_SetTextureFilter( GetPlayerObjectID(), FILTER_NONE, FILTER_NONE, FILTER_NONE );
 	
-	T_Manage_Familiars_A();
+	//T_Manage_Familiars_A();
 	//T_Init_Reimu_A();
 }
 
@@ -40,7 +40,7 @@ int Shot_Count_Fam = 0;
 	
 	Main_Loop();
 	
-	Player_Shoot_A();
+	//Player_Shoot_A();
 	yield;
 	
 }
@@ -60,22 +60,7 @@ int Shot_Count_Fam = 0;
 
 	case( EV_REQUEST_SPELL ){
 		
-		int Spell_Count = GetPlayerSpell();
-		if( Spell_Count >= 1 && Is_Bomb_Active == true ){
-			
-			//Play_SFX( SFX_SPELL_CALL, 50 );
-			
-			Is_Bomb_Active = true;
-			SetScriptResult( true );
-			SetPlayerSpell( Spell_Count - 1 );
-			T_Bomb_Reimu();
-
-		}
-		else{
-			
-			SetScriptResult( false );
-		}
-		//SetScriptResult( false );
+		SetScriptResult( false );
 	}	
 	
 	yield;
